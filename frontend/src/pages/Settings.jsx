@@ -1,0 +1,95 @@
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Save } from 'lucide-react';
+import { authService } from '../services/authService';
+
+function Settings() {
+    const { user } = useAuth();
+    const [formData, setFormData] = useState({
+        name: user?.name,
+        email: user?.email,
+        current_password: '',
+        new_password: ''
+    });
+    const [status, setStatus] = useState('');
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await authService.updateProfile(formData);
+            setStatus('Profile updated successfully');
+            setFormData({ ...formData, current_password: '', new_password: '' });
+        } catch (error) {
+            setStatus('Update failed: ' + (error.response?.data?.detail || 'Unknown error'));
+        }
+    };
+
+    return (
+        <div className="max-w-2xl animate-fade-in">
+            <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
+
+            <div className="card">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <h2 className="text-lg font-bold text-white border-b border-white/5 pb-2">Profile</h2>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Full Name</label>
+                        <input
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="input"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Email</label>
+                        <input
+                            name="email"
+                            value={formData.email}
+                            disabled
+                            className="input opacity-50 cursor-not-allowed"
+                        />
+                    </div>
+
+                    <h2 className="text-lg font-bold text-white border-b border-white/5 pb-2 pt-4">Security</h2>
+
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">Current Password</label>
+                        <input
+                            name="current_password"
+                            type="password"
+                            value={formData.current_password}
+                            onChange={handleChange}
+                            className="input"
+                            placeholder="Required to change password"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-1">New Password</label>
+                        <input
+                            name="new_password"
+                            type="password"
+                            value={formData.new_password}
+                            onChange={handleChange}
+                            className="input"
+                            placeholder="Leave empty to keep current"
+                        />
+                    </div>
+
+                    <div className="pt-4">
+                        <button type="submit" className="btn-primary flex items-center gap-2">
+                            <Save className="w-4 h-4" /> Save Changes
+                        </button>
+                        {status && <p className="mt-3 text-sm text-primary-400">{status}</p>}
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+export default Settings;
