@@ -39,3 +39,4 @@ frontend/coverage/
 
 # Docker
 .docker_data/
+backend/.env

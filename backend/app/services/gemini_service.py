@@ -1,11 +1,11 @@
 """
 Tarento AI Complaint Tracking System - Gemini AI Service
-Google Gemini API integration for categorization and insights
+Google Gemini API integration for categorization and insights (using HTTPX)
 """
 
 import json
 from typing import Optional, Dict, Any, List
-import google.generativeai as genai
+import httpx
 
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
@@ -13,21 +13,72 @@ from app.core.logging import logger
 
 
 class GeminiService:
-    """Service for Google Gemini AI integration"""
+    """Service for Google Gemini AI integration via REST API"""
     
     def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY
-        self.model_name = settings.GEMINI_MODEL
-        self.temperature = settings.GEMINI_TEMPERATURE
-        self.max_tokens = settings.GEMINI_MAX_TOKENS
-        self._model = None
+        # Prefer GROQ_API_KEY from settings
+        self.api_key = settings.GROQ_API_KEY or settings.GEMINI_API_KEY
+        
+        # Log key prefix for debugging
+        if self.api_key:
+            logger.info(f"Initialized AI Service with Key: {self.api_key[:5]}... Model: {settings.GEMINI_MODEL}")
+            
+        # Use Groq's Llama 3.3 70B (Latest Stable)
+        self.model_name = "llama-3.3-70b-versatile"
+        self.api_url = "https://api.groq.com/openai/v1/chat/completions"
     
-    def _get_model(self):
-        """Get or create Gemini model instance"""
-        if not self._model and self.api_key:
-            genai.configure(api_key=self.api_key)
-            self._model = genai.GenerativeModel(self.model_name)
-        return self._model
+    async def _generate_content(self, prompt: str, temperature: float = 0.2) -> Optional[str]:
+        """Generate content using Groq (OpenAI Compatible) API"""
+        if not self.api_key:
+            return None
+            
+        import asyncio
+        max_retries = 3
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        for attempt in range(max_retries + 1):
+            try:
+                async with httpx.AsyncClient() as client:
+                    payload = {
+                        "model": self.model_name,
+                        "messages": [
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": temperature,
+                        "max_tokens": 2048
+                    }
+                    
+                    response = await client.post(
+                        self.api_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=30.0
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        return data["choices"][0]["message"]["content"]
+                        
+                    elif response.status_code == 429:
+                        logger.warning(f"Groq Rate Limit. Retrying... (Attempt {attempt+1})")
+                        await asyncio.sleep(2)
+                        continue
+                    else:
+                        logger.error(f"Groq API error {response.status_code}: {response.text}")
+                        return None
+                        
+            except Exception as e:
+                logger.error(f"Groq API call failed: {str(e)}")
+                if attempt < max_retries:
+                     await asyncio.sleep(1)
+                     continue
+                return None
+        
+        return None
     
     async def categorize_complaint(
         self,
@@ -38,89 +89,64 @@ class GeminiService:
     ) -> Dict[str, Any]:
         """
         Use Gemini to categorize a complaint
-        
-        Returns dict with:
-        - category_type
-        - sub_category
-        - severity
-        - priority
-        - department
-        - confidence_score
-        - reasoning
         """
-        model = self._get_model()
+        prompt = f"""Analyze this complaint for Tarento Technologies.
         
-        if not model:
-            logger.warning("Gemini API not configured, using fallback categorization")
-            return self._fallback_categorization(subject, description)
-        
-        prompt = f"""Analyze this complaint for Tarento Technologies, a technology consulting company.
-
 Subject: {subject}
 Description: {description or 'No description provided'}
 Project: {project_name or 'Unknown'} ({client_name or 'Unknown client'})
 
 Categorize this complaint and return a JSON object with exactly these fields:
 {{
+    "is_complaint": true/false (false for general inquiries, holidays, pure feedback, or spam),
     "category_type": "project_delivery|technical|communication|resource|billing|quality|support|engagement",
     "sub_category": "specific sub-category from the list below",
-    "severity": "low|medium|high|critical",
-    "priority": 1-5 (1 being highest priority),
+    "severity": "medium",
+    "priority": 3,
     "department": "suggested department to handle this",
     "confidence_score": 0.0-1.0,
-    "reasoning": "brief explanation of categorization"
+    "reasoning": "brief explanation"
 }}
 
 Sub-categories by category:
-- project_delivery: milestone_delays, scope_creep, quality_issues, incomplete_features, documentation_gaps
-- technical: architecture_decisions, performance_issues, integration_problems, security_vulnerabilities, scalability_issues
-- communication: delayed_updates, unclear_requirements, unresponsive_pm, miscommunication
-- resource: team_unavailability, skill_mismatch, resource_changes, insufficient_team_size
-- billing: invoice_discrepancies, billing_cycle_issues, change_order_disputes, rate_disagreements
-- quality: code_review_failures, non_compliance_standards, accessibility_issues
-- support: slow_bug_resolution, production_issues, sla_breaches, inadequate_coverage
-- engagement: expectation_mismatch, lack_of_recommendations, stakeholder_management_issues
+- project_delivery: milestone_delays, scope_creep, quality_issues, incomplete_features
+- technical: architecture_decisions, performance_issues, integration_problems, security_vulnerabilities
+- communication: delayed_updates, unclear_requirements, unresponsive_pm
+- resource: team_unavailability, skill_mismatch, resource_changes
+- billing: invoice_discrepancies, billing_cycle_issues
+- quality: code_review_failures, non_compliance_standards
+- support: slow_bug_resolution, production_issues, sla_breaches
+- engagement: expectation_mismatch, stakeholder_management_issues
 
-Consider business impact when determining severity:
-- critical: Production down, security breach, major financial impact
-- high: Significant delays, client escalation, major functionality issues
-- medium: Notable issues affecting timeline or quality
-- low: Minor issues, suggestions, general feedback
+IMPORTANT:
+1. If the email is clearly NOT a complaint (e.g. asking for holiday calendar, general greeting, sales pitch), set "is_complaint": false.
+2. If it is a complaint, ALWAYS set severity="medium" and priority=3. We treat all complaints equally.
+3. Return ONLY the JSON object, start with {{ and end with }}."""
 
-Return ONLY the JSON object, no additional text."""
-
-        try:
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=self.temperature,
-                    max_output_tokens=self.max_tokens
-                )
-            )
-            
-            # Parse response
-            response_text = response.text.strip()
-            
-            # Extract JSON from response
-            if "```json" in response_text:
-                response_text = response_text.split("```json")[1].split("```")[0]
-            elif "```" in response_text:
-                response_text = response_text.split("```")[1].split("```")[0]
-            
-            result = json.loads(response_text)
-            
-            # Validate required fields
-            required_fields = ["category_type", "severity", "priority"]
-            for field in required_fields:
-                if field not in result:
-                    raise ValueError(f"Missing required field: {field}")
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Gemini categorization failed: {str(e)}")
+        response_text = await self._generate_content(prompt, temperature=0.2)
+        
+        if not response_text:
+            logger.warning("Gemini API unavailable, using fallback")
             return self._fallback_categorization(subject, description)
-    
+            
+        try:
+            # Clean response to ensure valid JSON
+            cleaned_text = self._clean_json(response_text)
+            result = json.loads(cleaned_text)
+            return result
+        except Exception as e:
+            logger.error(f"Failed to parse Gemini response: {str(e)}")
+            return self._fallback_categorization(subject, description)
+
+    def _clean_json(self, text: str) -> str:
+        """Extract JSON from markdown code blocks if present"""
+        text = text.strip()
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0]
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0]
+        return text.strip()
+
     def _fallback_categorization(
         self,
         subject: str,
@@ -130,119 +156,76 @@ Return ONLY the JSON object, no additional text."""
         # Simple keyword-based categorization
         text = f"{subject} {description}".lower()
         
+        # Heuristic for non-complaints (when API is down)
+        # Heuristic for non-complaints (when API is down)
+        non_complaint_keywords = ["holiday", "calendar", "question", "inquiry", "greeting", "thanks", "checking", "demo", "test", "ignore"]
+        is_complaint = True
+        
+        # If it looks like a simple inquiry, mark distinct from complaint
+        if any(k in text for k in non_complaint_keywords) and not any(k in text for k in ["fail", "error", "broken", "down", "bug"]):
+             is_complaint = False
+        
         category_keywords = {
-            "technical": ["bug", "error", "crash", "performance", "api", "code", "server"],
-            "billing": ["invoice", "payment", "billing", "charge", "cost", "price"],
-            "communication": ["update", "response", "contact", "message", "call"],
-            "project_delivery": ["delay", "deadline", "milestone", "delivery", "late"],
-            "quality": ["quality", "review", "standard", "test"],
-            "support": ["help", "support", "issue", "problem"],
-            "resource": ["team", "resource", "staff", "availability"],
-            "engagement": ["expectation", "meeting", "stakeholder"]
+            "technical": ["bug", "error", "crash", "performance", "api", "code"],
+            "billing": ["invoice", "payment", "cost", "price"],
+            "project_delivery": ["delay", "deadline", "delivery", "late"],
+            "support": ["help", "issue", "problem"]
         }
         
-        # Find best matching category
         best_category = "support"
-        best_score = 0
-        
-        for category, keywords in category_keywords.items():
-            score = sum(1 for kw in keywords if kw in text)
-            if score > best_score:
-                best_score = score
-                best_category = category
-        
-        # Determine severity based on keywords
-        severity = "medium"
-        if any(w in text for w in ["urgent", "critical", "emergency", "down", "broken"]):
-            severity = "critical"
-        elif any(w in text for w in ["important", "serious", "major"]):
-            severity = "high"
-        elif any(w in text for w in ["minor", "small", "suggestion"]):
-            severity = "low"
+        if is_complaint:
+            for category, keywords in category_keywords.items():
+                if any(k in text for k in keywords):
+                    best_category = category
+                    break
+        else:
+            best_category = "ignored"
         
         return {
+            "is_complaint": is_complaint,
             "category_type": best_category,
             "sub_category": "general",
-            "severity": severity,
-            "priority": {"critical": 1, "high": 2, "medium": 3, "low": 4}.get(severity, 3),
-            "department": self._get_department(best_category),
+            "severity": "medium",
+            "priority": 3,
+            "department": "Support",
             "confidence_score": 0.5,
-            "reasoning": "Categorized using keyword matching (Gemini unavailable)"
+            "reasoning": "Fallback keyword matching"
         }
-    
-    def _get_department(self, category: str) -> str:
-        """Map category to department"""
-        mapping = {
-            "project_delivery": "Project Management",
-            "technical": "Engineering",
-            "communication": "Account Management",
-            "resource": "Resource Management",
-            "billing": "Finance",
-            "quality": "Quality Assurance",
-            "support": "Support",
-            "engagement": "Account Management"
-        }
-        return mapping.get(category, "Support")
     
     async def detect_patterns(
         self,
         complaints_data: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Use Gemini to detect patterns in complaints"""
-        model = self._get_model()
-        
-        if not model or len(complaints_data) < 5:
+        if len(complaints_data) < 3:
             return []
+            
+        # Summary for prompt
+        summaries = [f"- {c.get('category')}: {c.get('subject')}" for c in complaints_data[:30]]
         
-        # Prepare summary of complaints
-        summaries = []
-        for c in complaints_data[:50]:  # Limit to 50 complaints
-            summaries.append(f"- {c.get('category', 'unknown')}: {c.get('subject', '')[:100]}")
-        
-        prompt = f"""Analyze these complaints from the last 30 days and identify patterns:
-
+        prompt = f"""Analyze these complaints for recurring patterns:
 {chr(10).join(summaries)}
 
 Identify patterns and return a JSON array:
 [
     {{
         "pattern_type": "recurring|trending|systemic",
-        "description": "description of the pattern",
-        "frequency": number of occurrences,
-        "severity_score": 0.0-1.0,
-        "affected_categories": ["list of categories"],
-        "recommendation": "what action to take"
+        "description": "description",
+        "frequency": number,
+        "severity_score": 0.1-1.0,
+        "affected_categories": ["cat1"],
+        "recommendation": "action"
     }}
 ]
+Return ONLY JSON array."""
 
-Pattern types:
-- recurring: Same problem happening repeatedly
-- trending: Issue frequency is increasing
-- systemic: Root cause affecting multiple areas
-
-Return ONLY the JSON array."""
-
+        response_text = await self._generate_content(prompt, temperature=0.3)
+        if not response_text:
+            return []
+            
         try:
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=2048
-                )
-            )
-            
-            response_text = response.text.strip()
-            
-            if "```json" in response_text:
-                response_text = response_text.split("```json")[1].split("```")[0]
-            elif "```" in response_text:
-                response_text = response_text.split("```")[1].split("```")[0]
-            
-            patterns = json.loads(response_text)
-            return patterns if isinstance(patterns, list) else []
-            
-        except Exception as e:
-            logger.error(f"Gemini pattern detection failed: {str(e)}")
+            return json.loads(self._clean_json(response_text))
+        except:
             return []
     
     async def generate_insights(
@@ -250,61 +233,33 @@ Return ONLY the JSON array."""
         analytics_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Use Gemini to generate executive insights"""
-        model = self._get_model()
-        
-        if not model:
-            return {"insights": [], "executive_summary": "Gemini API not configured"}
-        
-        prompt = f"""Based on these analytics from Tarento Technologies complaint system:
+        prompt = f"""Based on analytics:
+Total: {analytics_data.get('total_complaints')}
+Categories: {analytics_data.get('by_category')}
+SLA Compliance: {analytics_data.get('sla_compliance')}%
 
-Total complaints: {analytics_data.get('total_complaints', 0)}
-By category: {analytics_data.get('by_category', {})}
-By project: {analytics_data.get('by_project', {})}
-Resolution time avg: {analytics_data.get('avg_resolution_hours', 0)} hours
-SLA compliance: {analytics_data.get('sla_compliance', 0)}%
-
-Generate insights and return JSON:
+Generate insights JSON:
 {{
     "insights": [
         {{
             "insight_type": "trend|recommendation|alert",
-            "title": "short title",
-            "description": "detailed description",
+            "title": "title",
+            "description": "desc",
             "impact_level": "low|medium|high",
-            "actionable": true/false,
-            "recommendations": ["list of action items"]
+            "actionable": true,
+            "recommendations": ["action"]
         }}
     ],
-    "executive_summary": "2-3 sentence summary for executives"
-}}
+    "executive_summary": "summary text"
+}}"""
 
-Return ONLY the JSON object."""
-
+        response_text = await self._generate_content(prompt, temperature=0.4)
+        if not response_text:
+            return {"insights": [], "executive_summary": "AI unavailable"}
+            
         try:
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.4,
-                    max_output_tokens=2048
-                )
-            )
-            
-            response_text = response.text.strip()
-            
-            if "```json" in response_text:
-                response_text = response_text.split("```json")[1].split("```")[0]
-            elif "```" in response_text:
-                response_text = response_text.split("```")[1].split("```")[0]
-            
-            return json.loads(response_text)
-            
-        except Exception as e:
-            logger.error(f"Gemini insight generation failed: {str(e)}")
-            return {
-                "insights": [],
-                "executive_summary": "Could not generate insights"
-            }
+            return json.loads(self._clean_json(response_text))
+        except:
+            return {"insights": [], "executive_summary": "Parsing error"}
 
-
-# Singleton instance
 gemini_service = GeminiService()

@@ -26,46 +26,30 @@ class EmailParserAgent(BaseAgent):
         if not emails:
             return {"processed": 0, "message": "No new emails"}
         
-        # Get projects for matching
-        projects = []
-        if self.org_id:
-            result = await self.db.execute(
-                select(Project).where(Project.org_id == self.org_id)
-            )
-            projects = [
-                {
-                    "project_id": str(p.project_id),
-                    "project_code": p.project_code,
-                    "project_name": p.project_name,
-                    "client_name": p.client_name
-                }
-                for p in result.scalars().all()
-            ]
         
-        created = 0
+        processed_count = 0
         for email_data in emails:
-            # Try to match to a project
-            project_id = email_service.match_project_from_email(
-                email_data.get("customer_email", ""),
-                email_data.get("subject", ""),
-                projects
-            )
+            try:
+                # Use the existing processing logic (same as simulation) to ensure
+                # AI categorization, project matching, and assignment all happen.
+                await email_service.process_simulated_email(
+                    subject=email_data.get("subject", "No Subject"),
+                    content=email_data.get("content", ""),
+                    sender=email_data.get("sender", "unknown@example.com"),
+                    db_session=self.db
+                )
+                processed_count += 1
+            except Exception as e:
+                # Log error but continue processing other emails
+                from app.core.logging import logger
+                logger.error(f"Failed to process email from {email_data.get('sender')}: {str(e)}")
+                continue
             
-            # Create complaint
-            complaint = Complaint(
-                org_id=self.org_id,
-                project_id=project_id,
-                email_id=email_data.get("email_id"),
-                customer_name=email_data.get("customer_name"),
-                customer_email=email_data.get("customer_email"),
-                subject=email_data.get("subject"),
-                description=email_data.get("description"),
-                raw_email_content=email_data.get("raw_content"),
-                status=ComplaintStatus.NEW
-            )
-            
-            self.db.add(complaint)
-            created += 1
+        return {
+            "processed": len(emails),
+            "created": processed_count,
+            "message": f"Successfully processed {processed_count} emails"
+        }
         
         await self.db.flush()
         

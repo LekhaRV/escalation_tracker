@@ -111,8 +111,15 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Tarento Complaint Tracking System...")
     await init_db()
     logger.info("Database initialized")
+    
+    # Start Agent Scheduler
+    from app.core.scheduler import start_scheduler, shutdown_scheduler
+    start_scheduler()
+    
     yield
+    
     logger.info("Shutting down...")
+    shutdown_scheduler()
     await close_db()
 
 

@@ -135,3 +135,28 @@ async def get_report(
         "generated_at": datetime.utcnow().isoformat(),
         "data": stats
     }
+
+
+from pydantic import BaseModel
+
+class AskRequest(BaseModel):
+    query: str
+
+
+@router.post(
+    "/ask",
+    summary="Ask AI Analyst",
+    description="Ask natural language questions about your data"
+)
+async def ask_analyst(
+    request: AskRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ask the AI analyst a question"""
+    from app.agents.analyst_agent import AnalystAgent
+    
+    agent = AnalystAgent(db, current_user.org_id)
+    response = await agent.answer_query(request.query)
+    
+    return response

@@ -37,6 +37,11 @@ class DashboardStats(BaseModel):
     avg_resolution_time_hours: float
     resolution_rate: float
 
+    # Extended Data
+    daily_trends: List[Dict[str, Any]] = []
+    recent_patterns: List[Dict[str, Any]] = []
+    recent_insights: List[Dict[str, Any]] = []
+
 
 class TrendDataPoint(BaseModel):
     """Single data point for trends"""

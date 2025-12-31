@@ -49,6 +49,13 @@ class AnalyticsService:
         overdue = await self._count_overdue(org_id)
         compliance = 100 - (overdue / max(total, 1) * 100)
         
+        # Daily trends
+        trends = await self.get_daily_trends(org_id)
+        
+        # Recent patterns & insights
+        patterns = await self.get_patterns(org_id)
+        insights = await self.get_insights(org_id)
+        
         return {
             "total_complaints": total,
             "new_complaints": new,
@@ -64,9 +71,39 @@ class AnalyticsService:
             "complaints_this_week": week_count,
             "complaints_this_month": month_count,
             "avg_resolution_time_hours": 24.0,
-            "resolution_rate": round(resolved / max(total, 1) * 100, 1)
+            "resolution_rate": round(resolved / max(total, 1) * 100, 1),
+            "daily_trends": trends,
+            "recent_patterns": patterns,
+            "recent_insights": insights
         }
     
+    async def get_daily_trends(self, org_id: UUID, days: int = 7) -> List[Dict[str, Any]]:
+        """Get complaint counts for the last N days"""
+        trends = []
+        now = datetime.utcnow()
+        
+        for i in range(days - 1, -1, -1):
+            day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            day_name = day_start.strftime("%a") # Mon, Tue
+            
+            # Count complaints created on this day
+            query = select(func.count()).select_from(Complaint).where(
+                Complaint.org_id == org_id,
+                Complaint.created_at >= day_start,
+                Complaint.created_at < day_end
+            )
+            result = await self.db.execute(query)
+            count = result.scalar() or 0
+            
+            trends.append({
+                "name": day_name,
+                "date": day_start.strftime("%Y-%m-%d"),
+                "complaints": count
+            })
+            
+        return trends
+
     async def _count_complaints(
         self,
         org_id: UUID,
@@ -118,17 +155,37 @@ class AnalyticsService:
         result = await self.db.execute(
             select(ComplaintPattern).where(
                 ComplaintPattern.org_id == org_id
-            ).order_by(ComplaintPattern.detected_at.desc()).limit(20)
+            ).order_by(ComplaintPattern.detected_at.desc()).limit(5)
         )
-        return [{"pattern_id": str(p.pattern_id), "type": p.pattern_type.value,
-                 "description": p.pattern_description} for p in result.scalars().all()]
+        patterns = result.scalars().all()
+        return [{
+            "pattern_id": str(p.pattern_id), 
+            "type": p.pattern_type.value,
+            "description": p.pattern_description,
+            "detected_at": p.detected_at.isoformat() if p.detected_at else None,
+            "confidence": float(p.severity_score or 0)
+        } for p in patterns]
     
     async def get_insights(self, org_id: UUID) -> List[Dict[str, Any]]:
         """Get recent insights"""
+        from app.utils.constants import InsightType
+        
+        # If no insights exist, generate placeholder ones for demo
         result = await self.db.execute(
             select(ComplaintInsight).where(
                 ComplaintInsight.org_id == org_id
-            ).order_by(ComplaintInsight.generated_at.desc()).limit(10)
+            ).order_by(ComplaintInsight.generated_at.desc()).limit(5)
         )
-        return [{"insight_id": str(i.insight_id), "type": i.insight_type.value,
-                 "title": i.title} for i in result.scalars().all()]
+        insights = result.scalars().all()
+        
+        if not insights:
+            # Return some safe defaults if system is fresh
+            return []
+            
+        return [{
+            "insight_id": str(i.insight_id), 
+            "type": i.insight_type.value,
+            "title": i.title,
+            "description": i.description,
+            "generated_at": i.generated_at.isoformat()
+        } for i in insights]

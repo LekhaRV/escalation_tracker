@@ -28,5 +28,10 @@ export const complaintService = {
     async bulkOperation(data) {
         const response = await api.post('/complaints/bulk', data);
         return response.data;
+    },
+
+    async simulateEmail(data) {
+        const response = await api.post('/emails/simulate', data);
+        return response.data;
     }
 };

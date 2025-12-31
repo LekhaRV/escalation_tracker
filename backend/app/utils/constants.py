@@ -155,6 +155,7 @@ SUB_CATEGORIES: Dict[str, List[str]] = {
 
 
 # Category to Department Mapping
+# Maps AI-detected category types to specific departments
 CATEGORY_DEPARTMENT_MAP: Dict[str, str] = {
     "project_delivery": "Project Management",
     "technical": "Engineering",
@@ -163,7 +164,19 @@ CATEGORY_DEPARTMENT_MAP: Dict[str, str] = {
     "billing": "Finance",
     "quality": "Quality Assurance",
     "support": "Support",
-    "engagement": "Account Management"
+    "engagement": "Account Management",
+    # Additional aliases for flexible AI responses
+    "infrastructure": "Engineering",
+    "api": "Engineering",
+    "bug": "Engineering",
+    "performance": "Engineering",
+    "security": "Engineering",
+    "invoice": "Finance",
+    "payment": "Finance",
+    "delay": "Project Management",
+    "timeline": "Project Management",
+    "testing": "Quality Assurance",
+    "qa": "Quality Assurance",
 }
 
 

@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_MAX_TOKENS: int = 2048
     
+    # Groq AI (Alternative)
+    GROQ_API_KEY: str = ""
+    
     # Email IMAP
     EMAIL_HOST: str = "imap.gmail.com"
     EMAIL_PORT: int = 993

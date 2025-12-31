@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.agents.base_agent import BaseAgent
 from app.models import (
     Complaint, ComplaintAssignment, ComplaintCategory,
-    ProjectTeamMember, User
+    ProjectTeamMember, User, Project
 )
 from app.utils.constants import ComplaintStatus, SeverityLevel, CATEGORY_DEPARTMENT_MAP
 from app.utils.helpers import calculate_sla_deadline, calculate_assignment_score, get_category_keywords
@@ -39,7 +39,7 @@ class MappingAgent(BaseAgent):
             ComplaintAssignment.assignment_id == None
         ).options(
             selectinload(Complaint.category),
-            selectinload(Complaint.project).selectinload("team_members").selectinload("user")
+            selectinload(Complaint.project).selectinload(Project.team_members).selectinload(ProjectTeamMember.user)
         ).limit(10)
         
         if self.org_id:
@@ -81,12 +81,15 @@ class MappingAgent(BaseAgent):
         assigned_user_id = None
         assignment_reason = ""
         
+        # Helper to safely get severity value
+        severity_val = severity.value if hasattr(severity, "value") else str(severity)
+        
         # PROJECT-BASED ROUTING (Priority)
         if complaint.project_id and complaint.project:
             team_members = complaint.project.team_members
             if team_members:
                 best_member, score = await self._find_best_team_member(
-                    team_members, category_type, sub_category, severity.value
+                    team_members, category_type, sub_category, severity_val
                 )
                 if best_member:
                     assigned_user_id = best_member.user_id
@@ -104,7 +107,7 @@ class MappingAgent(BaseAgent):
             return None
         
         # Calculate SLA deadline
-        sla_deadline = calculate_sla_deadline(severity.value)
+        sla_deadline = calculate_sla_deadline(severity_val)
         
         return ComplaintAssignment(
             complaint_id=complaint.complaint_id,

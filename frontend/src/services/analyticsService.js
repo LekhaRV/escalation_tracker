@@ -19,5 +19,10 @@ export const analyticsService = {
     async getReport(type) {
         const response = await api.get(`/analytics/reports/${type}`);
         return response.data;
+    },
+
+    async askAnalyst(query) {
+        const response = await api.post('/analytics/ask', { query });
+        return response.data;
     }
 };

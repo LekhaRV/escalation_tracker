@@ -11,6 +11,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.system import router as system_router
+from app.api.v1.emails import router as email_router
 
 api_router = APIRouter()
 
@@ -20,4 +21,6 @@ api_router.include_router(projects_router)
 api_router.include_router(analytics_router)
 api_router.include_router(admin_router)
 api_router.include_router(agents_router)
+api_router.include_router(agents_router)
 api_router.include_router(system_router)
+api_router.include_router(email_router, prefix="/emails", tags=["emails"])

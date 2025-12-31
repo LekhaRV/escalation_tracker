@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Search, Filter, Plus, MoreVertical,
-    Clock, AlertCircle, FileText
+    Clock, AlertCircle, FileText, Mail
 } from 'lucide-react';
 import { complaintService } from '../services/complaintService';
+import { CreateComplaintModal, SimulateEmailModal } from '../components/common/Modals';
 
 function Complaints() {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, new, in_progress, resolved
     const [search, setSearch] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
     const navigate = useNavigate();
 
@@ -31,6 +34,33 @@ function Complaints() {
             console.error('Failed to fetch complaints', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateComplaint = async (data) => {
+        try {
+            await complaintService.createComplaint(data);
+            setIsModalOpen(false);
+            fetchComplaints();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to create complaint');
+        }
+    };
+
+    const handleSimulateEmail = async (data) => {
+        try {
+            await complaintService.simulateEmail(data);
+            setIsEmailModalOpen(false);
+
+            // Wait a moment for AI processing to finish
+            setLoading(true);
+            setTimeout(() => {
+                fetchComplaints();
+            }, 2000);
+        } catch (error) {
+            console.error(error);
+            alert('Failed to simulate email');
         }
     };
 
@@ -56,13 +86,23 @@ function Complaints() {
                     <h1 className="text-2xl font-bold text-white">Complaints</h1>
                     <p className="text-gray-400 text-sm">Manage and track customer issues</p>
                 </div>
-                <button
-                    onClick={() => navigate('/complaints/new')} // We'll add this route or modal later
-                    className="btn-primary flex items-center gap-2"
-                >
-                    <Plus className="w-4 h-4" />
-                    <span>New Complaint</span>
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setIsEmailModalOpen(true)}
+                        className="btn-secondary flex items-center gap-2"
+                        title="Debug Tool: Inject fake email"
+                    >
+                        <Mail className="w-4 h-4" />
+                        <span className="hidden md:inline">Simulate Email</span>
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>New Complaint</span>
+                    </button>
+                </div>
             </div>
 
             {/* Filters & Search */}
@@ -83,8 +123,8 @@ function Complaints() {
                             key={s}
                             onClick={() => setFilter(s)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === s
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
                             {s.replace('_', ' ').toUpperCase()}
@@ -184,6 +224,18 @@ function Complaints() {
                     </table>
                 </div>
             </div>
+
+            <CreateComplaintModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onCreate={handleCreateComplaint}
+            />
+
+            <SimulateEmailModal
+                isOpen={isEmailModalOpen}
+                onClose={() => setIsEmailModalOpen(false)}
+                onSend={handleSimulateEmail}
+            />
         </div>
     );
 }

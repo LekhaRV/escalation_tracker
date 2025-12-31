@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Briefcase, Calendar, Plus } from 'lucide-react';
 import { projectService } from '../services/projectService';
+import { AddMemberModal } from '../components/common/Modals';
 
 function ProjectDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchDetail();
@@ -21,6 +24,17 @@ function ProjectDetail() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddMember = async (memberData) => {
+        try {
+            await projectService.addTeamMember(id, memberData);
+            setIsModalOpen(false);
+            fetchDetail();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to add team member');
         }
     };
 
@@ -73,10 +87,19 @@ function ProjectDetail() {
                 <div className="lg:col-span-2 card">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-bold text-white">Team Members</h2>
-                        <button className="btn-secondary text-sm flex items-center gap-2">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="btn-secondary text-sm flex items-center gap-2"
+                        >
                             <Plus className="w-4 h-4" /> Add Member
                         </button>
                     </div>
+
+                    <AddMemberModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onAdd={handleAddMember}
+                    />
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">

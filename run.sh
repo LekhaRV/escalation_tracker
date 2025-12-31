@@ -14,7 +14,7 @@ fi
 # Option to run with Docker
 if [ "$1" == "docker" ]; then
     echo "🐳 Running with Docker Compose..."
-    docker-compose up --build
+    docker compose up --build
     exit 0
 fi
 
@@ -22,8 +22,19 @@ fi
 echo "💻 Setting up locally..."
 
 # Backend
-echo "📦 Installing Backend Dependencies..."
+echo "📦 Checking Backend Dependencies..."
 cd backend
+
+# Create venv if not exists
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
+
+# Activate venv
+source venv/bin/activate
+
+echo "Installing requirements..."
 pip install -r requirements.txt > /dev/null
 
 echo "🌱 Seeding Database..."

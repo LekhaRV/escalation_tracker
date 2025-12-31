@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Users, Plus } from 'lucide-react';
 import { projectService } from '../services/projectService';
+import { CreateProjectModal } from '../components/common/Modals';
 
 function Projects() {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchProjects();
@@ -23,6 +26,17 @@ function Projects() {
         }
     };
 
+    const handleCreateProject = async (data) => {
+        try {
+            await projectService.createProject(data);
+            setIsModalOpen(false);
+            fetchProjects();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to create project');
+        }
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
@@ -31,6 +45,7 @@ function Projects() {
                     <p className="text-gray-400 text-sm">Manage projects and teams</p>
                 </div>
                 <button
+                    onClick={() => setIsModalOpen(true)}
                     className="btn-primary flex items-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
@@ -78,6 +93,12 @@ function Projects() {
                     </div>
                 ))}
             </div>
+
+            <CreateProjectModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onCreate={handleCreateProject}
+            />
         </div>
     );
 }
