@@ -174,7 +174,35 @@ class ComplaintService:
         # Check permissions based on role
         if updated_by.role == UserRole.VIEWER:
             raise AuthorizationError("Viewers cannot update complaints")
-        
+            
+        # Agent Permission Logic
+        if updated_by.role == UserRole.AGENT:
+            # 1. Assignment Check
+            is_assigned_to_me = (
+                complaint.assignment and 
+                complaint.assignment.assigned_to_user_id == updated_by.user_id
+            )
+            
+            # 2. Check if trying to assign
+            if data.assign_to_user_id:
+                # Agents can only PICK UP (assign to self)
+                if data.assign_to_user_id != updated_by.user_id:
+                    raise AuthorizationError("Agents can only assign complaints to themselves (Pick Up)")
+                # Allowed: Picking up unassigned or stealing? usually pick up unassigned.
+                # Let's assume re-claiming is allowed if they are the assignee? No, if assigned to someone else, can they steal?
+                # Stricter: Can only pick up if unassigned OR if it's already assigned to them (no-op)
+                if complaint.assignment and complaint.assignment.assigned_to_user_id and complaint.assignment.assigned_to_user_id != updated_by.user_id:
+                     raise AuthorizationError("Complaint is already assigned to another agent")
+
+            # 3. Check if trying to update other fields (status, notes, etc)
+            # If we are updating content, we MUST be the assignee.
+            # Exception: We are becoming the assignee in this very request (Pick up + Update)
+            becoming_assignee = (data.assign_to_user_id == updated_by.user_id)
+            
+            if (data.status or data.resolution_notes or data.escalate_to_level or data.subject or data.description):
+                if not is_assigned_to_me and not becoming_assignee:
+                    raise AuthorizationError("Agents can only update complaints assigned to them")
+
         # Basic updates (status, notes, etc.)
         if data.subject is not None:
             complaint.subject = data.subject
@@ -205,10 +233,7 @@ class ComplaintService:
         
         # Reassignment
         if data.assign_to_user_id is not None:
-            # Agents can only self-assign
-            if updated_by.role == UserRole.AGENT:
-                if data.assign_to_user_id != updated_by.user_id:
-                    raise AuthorizationError("Agents can only self-assign complaints")
+            # Agent self-assignment check is already done above
             
             await self._reassign_complaint(
                 complaint,

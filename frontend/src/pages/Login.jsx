@@ -1,21 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { departmentService } from '../services/departmentService';
+import { authService } from '../services/authService';
 import { AlertCircle, ArrowRight, Loader } from 'lucide-react';
 
 function Login() {
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [departments, setDepartments] = useState([]);
+    const [defaultOrgId, setDefaultOrgId] = useState(null);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
         name: '',
-        orgName: ''
+        orgName: '',
+        departmentId: ''
     });
 
     const { login, register } = useAuth();
     const navigate = useNavigate();
+
+    // Fetch default org and departments on mount
+    useEffect(() => {
+        const fetchDefaults = async () => {
+            try {
+                const org = await authService.getDefaultOrg();
+                setDefaultOrgId(org.org_id);
+                const depts = await departmentService.getAll(org.org_id);
+                setDepartments(depts);
+            } catch (err) {
+                console.error("Failed to fetch defaults:", err);
+            }
+        };
+        fetchDefaults();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -26,7 +46,13 @@ function Login() {
             if (isLogin) {
                 await login(formData.email, formData.password);
             } else {
-                await register(formData.email, formData.password, formData.name, formData.orgName);
+                await register(
+                    formData.email,
+                    formData.password,
+                    formData.name,
+                    formData.orgName,
+                    formData.departmentId
+                );
             }
             navigate('/');
         } catch (err) {
@@ -103,6 +129,29 @@ function Login() {
                                     placeholder="Leave empty to join existing"
                                 />
                             </div>
+
+                            {!formData.orgName && (
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="departmentId">
+                                        DEPARTMENT
+                                    </label>
+                                    <select
+                                        id="departmentId"
+                                        name="departmentId"
+                                        required
+                                        value={formData.departmentId}
+                                        onChange={handleChange}
+                                        className="input"
+                                    >
+                                        <option value="" disabled>Select Department</option>
+                                        {departments.map(dept => (
+                                            <option key={dept.department_id} value={dept.department_id}>
+                                                {dept.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </>
                     )}
 
@@ -159,6 +208,15 @@ function Login() {
                         onClick={() => {
                             setIsLogin(!isLogin);
                             setError(null);
+                            // Reset optional fields when switching
+                            if (isLogin) {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    name: '',
+                                    orgName: '',
+                                    departmentId: ''
+                                }));
+                            }
                         }}
                         className="text-sm text-gray-400 hover:text-white transition-colors"
                     >

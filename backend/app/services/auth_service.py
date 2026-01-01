@@ -7,6 +7,7 @@ from typing import Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.models import User, Organization
 from app.schemas import UserRegister, UserLogin, TokenResponse
@@ -66,7 +67,8 @@ class AuthService:
             password=get_password_hash(data.password),
             name=data.name,
             role=role,
-            status=UserStatus.ACTIVE
+            status=UserStatus.ACTIVE,
+            department_id=data.department_id
         )
         self.db.add(user)
         await self.db.flush()
@@ -83,7 +85,7 @@ class AuthService:
         """Authenticate user and return tokens"""
         # Find user by email
         result = await self.db.execute(
-            select(User).where(User.email == data.email)
+            select(User).where(User.email == data.email).options(selectinload(User.department_link))
         )
         user = result.scalar_one_or_none()
         
@@ -149,7 +151,7 @@ class AuthService:
             raise AuthenticationError("Invalid token payload")
         
         result = await self.db.execute(
-            select(User).where(User.user_id == UUID(user_id))
+            select(User).where(User.user_id == UUID(user_id)).options(selectinload(User.department_link))
         )
         user = result.scalar_one_or_none()
         

@@ -35,7 +35,11 @@ class User(Base, TimestampMixin):
         nullable=False
     )
     team = Column(String(100))  # Team name
-    department = Column(String(100))  # Department
+    department_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.department_id", ondelete="SET NULL"),
+        nullable=True
+    )
     status = Column(
         SQLEnum(UserStatus, name="user_status"),
         default=UserStatus.ACTIVE,
@@ -53,6 +57,19 @@ class User(Base, TimestampMixin):
         "ComplaintEscalation",
         back_populates="escalated_user",
         foreign_keys="ComplaintEscalation.escalated_to_user_id"
+    )
+    # Department managed by this user
+    managed_department = relationship(
+        "Department",
+        back_populates="manager",
+        uselist=False,
+        foreign_keys="Department.manager_id"
+    )
+    # Department the user belongs to
+    department_link = relationship(
+        "Department",
+        back_populates="users",
+        foreign_keys=[department_id]
     )
     # Projects where user is project manager
     managed_projects = relationship(
@@ -72,13 +89,17 @@ class User(Base, TimestampMixin):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    @property
+    def department_name(self):
+        return self.department_link.name if self.department_link else None
     
     # Indexes
     __table_args__ = (
         Index("ix_users_email", "email"),
         Index("ix_users_org_id", "org_id"),
         Index("ix_users_role", "role"),
-        Index("ix_users_department", "department"),
+        Index("ix_users_department_id", "department_id"),
     )
     
     def __repr__(self):

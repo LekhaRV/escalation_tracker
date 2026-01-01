@@ -27,6 +27,11 @@ class Project(Base, TimestampMixin):
         ForeignKey("organizations.org_id", ondelete="CASCADE"),
         nullable=False
     )
+    department_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.department_id", ondelete="CASCADE"),
+        nullable=False
+    )
     project_name = Column(String(255), nullable=False)
     project_code = Column(String(50))  # Short code like "ABC-API"
     client_name = Column(String(255))
@@ -49,11 +54,16 @@ class Project(Base, TimestampMixin):
     
     # Relationships
     organization = relationship("Organization", back_populates="projects")
+    department = relationship("Department", back_populates="projects")
     project_manager = relationship(
         "User",
         back_populates="managed_projects",
         foreign_keys=[project_manager_id]
     )
+
+    @property
+    def department_name(self):
+        return self.department.name if self.department else None
     team_lead = relationship(
         "User",
         back_populates="led_projects",

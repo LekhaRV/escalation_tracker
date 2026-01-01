@@ -262,4 +262,37 @@ Generate insights JSON:
         except:
             return {"insights": [], "executive_summary": "Parsing error"}
 
+    async def generate_resolution_recommendations(
+        self,
+        subject: str,
+        description: str,
+        category: str,
+        severity: str
+    ) -> List[str]:
+        """Generate resolution steps for a complaint"""
+        prompt = f"""Complaint Resolution Expert System.
+        
+Subject: {subject}
+Description: {description}
+Category: {category} (Severity: {severity})
+
+Provide a checklist of 3-5 concrete, actionable steps a support agent should take to resolve this issue.
+Return ONLY a JSON array of strings, e.g., ["Check logs", "Restart service"].
+Do not include numbering or markdown formatting outside the array."""
+
+        response_text = await self._generate_content(prompt, temperature=0.3)
+        if not response_text:
+            return ["Review internal knowledge base", "Check standard operating procedures", "Escalate if blocking"]
+            
+        try:
+            result = json.loads(self._clean_json(response_text))
+            if isinstance(result, list):
+                return result
+            # Handle if AI returns object with steps key
+            if isinstance(result, dict) and "steps" in result:
+                return result["steps"]
+            return ["Review provided details", "Contact customer for more info"]
+        except:
+            return ["Review internal knowledge base"]
+
 gemini_service = GeminiService()

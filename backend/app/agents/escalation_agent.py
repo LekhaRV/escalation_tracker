@@ -16,16 +16,19 @@ from app.services.notification_service import notification_service
 
 class EscalationAgent(BaseAgent):
     """
-    Escalation Agent - Monitors SLA and auto-escalates
-    Schedule: Every hour
+    SLA Monitor Agent (formerly Escalation Agent)
+    Monitors SLA deadlines and sends warnings 7 days before breach.
+    Does NOT auto-escalate.
     """
     
     async def execute(self) -> Dict[str, Any]:
-        """Check SLA deadlines and escalate as needed"""
+        """Check SLA deadlines and send warnings"""
         now = datetime.utcnow()
-        warning_threshold = now + timedelta(hours=2)
+        # Warn if deadline is within 7 days
+        warning_threshold = now + timedelta(days=7)
         
-        # Find assignments approaching or past SLA
+        # Find assignments approaching deadline (or recently breached)
+        # We only care about active complaints
         query = select(ComplaintAssignment).join(
             Complaint
         ).where(
@@ -40,61 +43,33 @@ class EscalationAgent(BaseAgent):
         assignments = result.scalars().unique().all()
         
         if not assignments:
-            return {"processed": 0, "warnings": 0, "escalations": 0}
+            return {"processed": 0, "warnings": 0, "overdue": 0}
         
         warnings = 0
-        escalations = 0
+        overdue = 0
         
         for assignment in assignments:
+            days_left = (assignment.sla_deadline - now).total_seconds() / (24 * 3600)
+            
             if assignment.sla_deadline > now:
-                # Warning: within 2 hours
+                # Approaching Deadline (0 to 7 days left)
                 if assignment.assigned_user:
+                    # Send warning via notification service
                     await notification_service.send_sla_warning(
                         assignment.assigned_user.email,
                         assignment.complaint.subject,
-                        int((assignment.sla_deadline - now).total_seconds() / 3600)
+                        int(days_left * 24) # passing hours for consistency with service signature
                     )
                 warnings += 1
             else:
-                # Breached: auto-escalate
-                await self._escalate_complaint(assignment)
-                escalations += 1
-        
-        await self.db.flush()
+                # Already Overdue
+                # User requested NO auto-escalation.
+                # Just track stats.
+                overdue += 1
         
         return {
             "processed": len(assignments),
             "warnings": warnings,
-            "escalations": escalations,
-            "message": f"Sent {warnings} warnings, escalated {escalations}"
+            "overdue_tracked": overdue,
+            "message": f"Sent {warnings} warnings, found {overdue} overdue items (no escalation)"
         }
-    
-    async def _escalate_complaint(self, assignment: ComplaintAssignment):
-        """Escalate a complaint that has breached SLA"""
-        complaint = assignment.complaint
-        
-        # Determine current escalation level
-        current_level = 0
-        if complaint.escalations:
-            current_level = max(e.escalation_level for e in complaint.escalations)
-        
-        new_level = min(current_level + 1, 3)
-        
-        # Find escalation target
-        escalation_user_id = None
-        if complaint.project:
-            if new_level == 1:
-                escalation_user_id = complaint.project.team_lead_id
-            else:
-                escalation_user_id = complaint.project.project_manager_id
-        
-        # Create escalation record
-        escalation = ComplaintEscalation(
-            complaint_id=complaint.complaint_id,
-            escalation_level=new_level,
-            escalated_to_user_id=escalation_user_id,
-            escalation_reason=f"SLA breach - auto-escalated to level {new_level}",
-            escalated_by="agent"
-        )
-        
-        self.db.add(escalation)

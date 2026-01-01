@@ -75,7 +75,12 @@ function Projects() {
                         <h3 className="text-lg font-bold text-white mb-1 group-hover:text-primary-400 transition-colors">
                             {project.project_name}
                         </h3>
-                        <p className="text-sm text-gray-400 mb-4">{project.client_name}</p>
+                        <div className="flex justify-between items-center mb-4">
+                            <p className="text-sm text-gray-400">{project.client_name}</p>
+                            <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/5">
+                                {project.department_name}
+                            </span>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                             <div>

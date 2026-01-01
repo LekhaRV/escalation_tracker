@@ -45,6 +45,34 @@ async def register(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+@router.get(
+    "/default-org",
+    response_model=dict,
+    summary="Get default organization",
+    description="Get the default organization details for public registration"
+)
+async def get_default_org(
+    db: AsyncSession = Depends(get_db)
+):
+    """Get default organization for registration"""
+    from app.models import Organization
+    from app.utils.constants import OrgStatus
+    from sqlalchemy import select
+    
+    result = await db.execute(
+        select(Organization).where(Organization.status == OrgStatus.ACTIVE).limit(1)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="No active organization found")
+        
+    return {
+        "org_id": org.org_id,
+        "org_name": org.org_name
+    }
+
+
+
 @router.post(
     "/login",
     response_model=TokenResponse,

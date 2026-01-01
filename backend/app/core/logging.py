@@ -30,17 +30,21 @@ def setup_logging() -> logging.Logger:
     console_handler.setFormatter(console_format)
     
     # File handler
-    log_file = log_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
-    file_format = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s"
-    )
-    file_handler.setFormatter(file_format)
+    # File handler
+    try:
+        log_file = log_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_format = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s"
+        )
+        file_handler.setFormatter(file_format)
+        logger.addHandler(file_handler)
+    except (PermissionError, OSError):
+        print("WARNING: Could not create log file. Logging to console only.")
     
     # Add handlers
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
     
     return logger
 

@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     AGENT_INSIGHT_SCHEDULE: str = "0 3 * * 0"
     
     # CORS
-    CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:5173"]'
+    CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:5173","http://localhost:3001","http://localhost:8001"]'
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
         try:
             return json.loads(self.CORS_ORIGINS)
         except json.JSONDecodeError:
-            return ["http://localhost:3000", "http://localhost:5173"]
+            return ["http://localhost:3000", "http://localhost:5173", "http://localhost:3001", "http://localhost:8001"]
     
     class Config:
         env_file = ".env"

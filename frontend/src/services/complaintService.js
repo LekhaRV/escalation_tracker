@@ -33,5 +33,20 @@ export const complaintService = {
     async simulateEmail(data) {
         const response = await api.post('/emails/simulate', data);
         return response.data;
+    },
+
+    async getAssignableUsers(complaintId) {
+        const response = await api.get(`/complaints/${complaintId}/assignable-users`);
+        return response.data;
+    },
+
+    async assignAgent(complaintId, userId) {
+        const response = await api.put(`/complaints/${complaintId}`, { assign_to_user_id: userId });
+        return response.data;
+    },
+
+    async getResolutionRecommendations(complaintId) {
+        const response = await api.post(`/complaints/${complaintId}/recommend-resolution`);
+        return response.data;
     }
 };

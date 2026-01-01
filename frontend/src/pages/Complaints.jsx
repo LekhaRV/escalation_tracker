@@ -5,7 +5,7 @@ import {
     Clock, AlertCircle, FileText, Mail
 } from 'lucide-react';
 import { complaintService } from '../services/complaintService';
-import { CreateComplaintModal, SimulateEmailModal } from '../components/common/Modals';
+import { CreateComplaintModal, SimulateEmailModal, AssignAgentModal } from '../components/common/Modals';
 
 function Complaints() {
     const [complaints, setComplaints] = useState([]);
@@ -14,6 +14,9 @@ function Complaints() {
     const [search, setSearch] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [selectedComplaint, setSelectedComplaint] = useState(null);
+    const [actionMenuOpen, setActionMenuOpen] = useState(null); // complaint_id
 
     const navigate = useNavigate();
 
@@ -62,6 +65,25 @@ function Complaints() {
             console.error(error);
             alert('Failed to simulate email');
         }
+    };
+
+    const handleAssign = async (userId) => {
+        try {
+            await complaintService.assignAgent(selectedComplaint.complaint_id, userId);
+            setIsAssignModalOpen(false);
+            setSelectedComplaint(null);
+            fetchComplaints();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to assign agent');
+        }
+    };
+
+    const openAssignModal = (e, complaint) => {
+        e.stopPropagation();
+        setSelectedComplaint(complaint);
+        setIsAssignModalOpen(true);
+        setActionMenuOpen(null);
     };
 
     const getSeverityBadge = (severity) => {
@@ -114,7 +136,7 @@ function Complaints() {
                         placeholder="Search by subject, customer, or ID..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="input pl-10"
+                        className="input pl-14"
                     />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
@@ -213,9 +235,43 @@ function Complaints() {
                                             {new Date(complaint.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <button className="p-2 hover:bg-white/10 rounded px-1 transition-colors">
-                                                <MoreVertical className="w-4 h-4 text-gray-400" />
-                                            </button>
+                                            <div className="relative flex items-center gap-2 justify-end">
+                                                {!complaint.assigned_to_name && (
+                                                    <button
+                                                        onClick={(e) => openAssignModal(e, complaint)}
+                                                        className="px-2 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 text-xs font-medium rounded transition-colors"
+                                                    >
+                                                        Smart Assign
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActionMenuOpen(actionMenuOpen === complaint.complaint_id ? null : complaint.complaint_id);
+                                                    }}
+                                                    className="p-2 hover:bg-white/10 rounded px-1 transition-colors"
+                                                >
+                                                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                                                </button>
+                                                {actionMenuOpen === complaint.complaint_id && (
+                                                    <div className="absolute right-0 top-full mt-1 w-48 rounded-md shadow-lg bg-[#1e293b] ring-1 ring-black ring-opacity-5 z-50">
+                                                        <div className="py-1" role="menu">
+                                                            <button
+                                                                onClick={(e) => openAssignModal(e, complaint)}
+                                                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 w-full text-left"
+                                                            >
+                                                                {complaint.assigned_to_name ? 'Reassign Agent' : 'Smart Assign Agent'}
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); navigate(`/complaints/${complaint.complaint_id}`) }}
+                                                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 w-full text-left"
+                                                            >
+                                                                View Details
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -235,6 +291,14 @@ function Complaints() {
                 isOpen={isEmailModalOpen}
                 onClose={() => setIsEmailModalOpen(false)}
                 onSend={handleSimulateEmail}
+            />
+
+            <AssignAgentModal
+                isOpen={isAssignModalOpen}
+                onClose={() => setIsAssignModalOpen(false)}
+                onAssign={handleAssign}
+                currentAssignee={selectedComplaint?.assigned_to_user_id}
+                complaintId={selectedComplaint?.complaint_id}
             />
         </div>
     );

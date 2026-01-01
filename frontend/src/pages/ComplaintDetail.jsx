@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, User, Calendar, Tag, AlertTriangle,
-    CheckCircle, Clock, Shield, Send
+    CheckCircle, Clock, Shield, Send, Lightbulb
 } from 'lucide-react';
 import { complaintService } from '../services/complaintService';
+import { AssignAgentModal } from '../components/common/Modals';
 import { useAuth } from '../context/AuthContext';
 
 function ComplaintDetail() {
@@ -16,6 +17,8 @@ function ComplaintDetail() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('details');
     const [notes, setNotes] = useState('');
+    const [recommendations, setRecommendations] = useState([]);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
         fetchDetail();
@@ -54,11 +57,35 @@ function ComplaintDetail() {
         }
     };
 
+    const generateRecommendations = async () => {
+        setIsGenerating(true);
+        try {
+            const steps = await complaintService.getResolutionRecommendations(id);
+            setRecommendations(steps);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const [showAssignModal, setShowAssignModal] = useState(false);
+
+    const handleAssign = async (userId) => {
+        try {
+            await complaintService.updateComplaint(id, { assign_to_user_id: userId });
+            setShowAssignModal(false);
+            fetchDetail();
+        } catch (error) {
+            console.error("Failed to assign user", error);
+        }
+    };
+
     if (loading) return <div className="text-white">Loading...</div>;
     if (!complaint) return <div className="text-white">Complaint not found</div>;
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in relative">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <button
@@ -71,8 +98,8 @@ function ComplaintDetail() {
                     <div className="flex items-center gap-3 mb-1">
                         <h1 className="text-xl font-bold text-white">Complaint #{id.slice(0, 8)}</h1>
                         <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase border ${complaint.status === 'new' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' :
-                                complaint.status === 'in_progress' ? 'border-purple-500/30 text-purple-400 bg-purple-500/10' :
-                                    'border-green-500/30 text-green-400 bg-green-500/10'
+                            complaint.status === 'in_progress' ? 'border-purple-500/30 text-purple-400 bg-purple-500/10' :
+                                'border-green-500/30 text-green-400 bg-green-500/10'
                             }`}>
                             {complaint.status.replace('_', ' ')}
                         </span>
@@ -82,6 +109,13 @@ function ComplaintDetail() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowAssignModal(true)}
+                        className="btn-secondary flex items-center gap-2"
+                    >
+                        <Shield className="w-4 h-4" />
+                        <span>{complaint.assignment?.assigned_to_user_id ? 'Reassign' : 'Assign'}</span>
+                    </button>
                     {complaint.status !== 'resolved' && (
                         <button
                             onClick={() => handleStatusUpdate('in_progress')}
@@ -137,13 +171,55 @@ function ComplaintDetail() {
                                     <AlertTriangle className="w-3 h-3" /> Severity
                                 </label>
                                 <p className={`text-sm font-medium uppercase ${complaint.category?.severity === 'critical' ? 'text-red-400' :
-                                        complaint.category?.severity === 'high' ? 'text-orange-400' :
-                                            'text-gray-300'
+                                    complaint.category?.severity === 'high' ? 'text-orange-400' :
+                                        'text-gray-300'
                                     }`}>
                                     {complaint.category?.severity || 'Unknown'}
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* AI Recommendations */}
+                    <div className="card border-primary-500/20 bg-primary-500/5">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-primary-400 flex items-center gap-2">
+                                <Lightbulb className="w-5 h-5" /> AI Resolution Recommendations
+                            </h2>
+                            {!recommendations.length && (
+                                <button
+                                    onClick={generateRecommendations}
+                                    disabled={isGenerating}
+                                    className="px-3 py-1.5 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 rounded-lg text-xs font-medium transition-colors border border-primary-500/20 disabled:opacity-50"
+                                >
+                                    {isGenerating ? "Analyzing..." : "Generate Insights"}
+                                </button>
+                            )}
+                        </div>
+
+                        {recommendations.length > 0 ? (
+                            <ul className="space-y-3">
+                                {recommendations.map((rec, i) => (
+                                    <li key={i} className="flex gap-3 text-gray-300 bg-black/20 p-3 rounded-lg border border-white/5">
+                                        <span className="text-primary-400 font-bold bg-primary-500/10 w-6 h-6 flex items-center justify-center rounded-full text-xs shrink-0">
+                                            {i + 1}
+                                        </span>
+                                        <span className="text-sm">{rec}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            !isGenerating && <p className="text-gray-500 text-sm italic">Generate AI insights to see recommended resolution steps based on similar past issues.</p>
+                        )}
+
+                        {isGenerating && (
+                            <div className="flex items-center gap-2 text-primary-400 text-sm animate-pulse">
+                                <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                <span>Analyzing complaint details...</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Resolution / Timeline */}
@@ -203,9 +279,17 @@ function ComplaintDetail() {
                 <div className="space-y-6">
                     {/* Assignment Card */}
                     <div className="card">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase mb-4 flex items-center gap-2">
-                            <Shield className="w-4 h-4" /> Assignment
-                        </h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+                                <Shield className="w-4 h-4" /> Assignment
+                            </h3>
+                            <button
+                                onClick={() => setShowAssignModal(true)}
+                                className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-2"
+                            >
+                                {complaint.assignment?.assigned_to_user_id ? 'Change Agent' : 'Smart Assign'}
+                            </button>
+                        </div>
 
                         {complaint.assignment?.assigned_user_name ? (
                             <div className="bg-white/5 rounded-lg p-3 flex items-center gap-3 mb-4">
@@ -258,6 +342,15 @@ function ComplaintDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Assignment Modal */}
+            <AssignAgentModal
+                isOpen={showAssignModal}
+                onClose={() => setShowAssignModal(false)}
+                onAssign={handleAssign}
+                currentAssignee={complaint.assignment?.assigned_to_user_id}
+                complaintId={id}
+            />
         </div>
     );
 }
