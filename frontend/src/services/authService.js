@@ -6,13 +6,19 @@ export const authService = {
         return response.data;
     },
 
-    async register(email, password, name, orgName = null) {
+    async register(email, password, name, orgName = null, departmentId = null) {
         const response = await api.post('/auth/register', {
             email,
             password,
             name,
-            org_name: orgName
+            org_name: orgName,
+            department_id: departmentId
         });
+        return response.data;
+    },
+
+    async getDefaultOrg() {
+        const response = await api.get('/auth/default-org');
         return response.data;
     },
 

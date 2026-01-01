@@ -17,7 +17,7 @@ class UserBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     role: UserRole = UserRole.AGENT
     team: Optional[str] = Field(None, max_length=100)
-    department: Optional[str] = Field(None, max_length=100)
+    department_id: Optional[UUID] = None
 
 
 # Request schemas
@@ -32,6 +32,7 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=8, max_length=100)
     name: str = Field(..., min_length=1, max_length=255)
     org_name: Optional[str] = Field(None, max_length=255)  # For new org creation
+    department_id: Optional[UUID] = None
 
 
 class UserLogin(BaseModel):
@@ -44,7 +45,7 @@ class UserUpdate(BaseModel):
     """Schema for updating user profile"""
     name: Optional[str] = Field(None, max_length=255)
     team: Optional[str] = Field(None, max_length=100)
-    department: Optional[str] = Field(None, max_length=100)
+    department_id: Optional[UUID] = None
     current_password: Optional[str] = None  # Required for password change
     new_password: Optional[str] = Field(None, min_length=8, max_length=100)
 
@@ -54,7 +55,7 @@ class UserAdminUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     role: Optional[UserRole] = None
     team: Optional[str] = Field(None, max_length=100)
-    department: Optional[str] = Field(None, max_length=100)
+    department_id: Optional[UUID] = None
     status: Optional[UserStatus] = None
 
 
@@ -67,7 +68,8 @@ class UserResponse(BaseModel):
     name: str
     role: UserRole
     team: Optional[str] = None
-    department: Optional[str] = None
+    department_id: Optional[UUID] = None
+    department_name: Optional[str] = None
     status: UserStatus
     created_at: datetime
     updated_at: datetime
@@ -83,8 +85,11 @@ class UserBriefResponse(BaseModel):
     name: str
     role: UserRole
     team: Optional[str] = None
-    department: Optional[str] = None
+    department_id: Optional[UUID] = None
+    department_name: Optional[str] = None
     status: UserStatus
+    escalations_count: int = 0
+    resolutions_count: int = 0
     
     class Config:
         from_attributes = True

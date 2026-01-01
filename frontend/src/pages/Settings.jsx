@@ -54,6 +54,24 @@ function Settings() {
                             className="input opacity-50 cursor-not-allowed"
                         />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">Role</label>
+                            <input
+                                value={user?.role || ''}
+                                disabled
+                                className="input opacity-50 cursor-not-allowed uppercase"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">Department</label>
+                            <input
+                                value={user?.department_name || 'N/A'}
+                                disabled
+                                className="input opacity-50 cursor-not-allowed"
+                            />
+                        </div>
+                    </div>
 
                     <h2 className="text-lg font-bold text-white border-b border-white/5 pb-2 pt-4">Security</h2>
 

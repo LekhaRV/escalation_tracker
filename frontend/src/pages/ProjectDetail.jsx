@@ -29,12 +29,17 @@ function ProjectDetail() {
 
     const handleAddMember = async (memberData) => {
         try {
-            await projectService.addTeamMember(id, memberData);
+            await projectService.manageTeam(id, {
+                user_id: memberData.user_id,
+                action: 'add',
+                role: memberData.role,
+                specialization: memberData.specialization
+            });
             setIsModalOpen(false);
             fetchDetail();
         } catch (error) {
             console.error(error);
-            alert('Failed to add team member');
+            alert('Failed to add team member: ' + (error.response?.data?.detail || error.message));
         }
     };
 
@@ -65,6 +70,10 @@ function ProjectDetail() {
                         <div>
                             <label className="text-xs text-gray-500 uppercase">Project Code</label>
                             <p className="text-white font-mono">{project.project_code}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 uppercase">Department</label>
+                            <p className="text-white">{project.department_name || 'N/A'}</p>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 uppercase">Project Manager</label>
@@ -99,6 +108,7 @@ function ProjectDetail() {
                         isOpen={isModalOpen}
                         onClose={() => setIsModalOpen(false)}
                         onAdd={handleAddMember}
+                        departmentId={project.department_id}
                     />
 
                     <div className="overflow-x-auto">

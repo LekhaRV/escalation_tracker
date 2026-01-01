@@ -58,6 +58,19 @@ class ComplaintEscalationResponse(BaseModel):
         from_attributes = True
 
 
+class AssignableUserResponse(BaseModel):
+    """Schema for users to assign to a complaint with AI scoring"""
+    user_id: UUID
+    name: str
+    email: str
+    role: str
+    match_score: float
+    is_recommended: bool
+    recommendation_reason: Optional[str] = None
+    workload_current: int
+    workload_capacity: int
+
+
 # Base complaint schemas
 class ComplaintBase(BaseModel):
     """Base complaint schema"""

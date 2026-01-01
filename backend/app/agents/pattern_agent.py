@@ -38,7 +38,7 @@ class PatternAgent(BaseAgent):
         result = await self.db.execute(query)
         complaints = result.scalars().unique().all()
         
-        if len(complaints) < 5:
+        if len(complaints) < 3:
             return {"processed": 0, "patterns": 0, "message": "Not enough data"}
         
         # Prepare data for analysis

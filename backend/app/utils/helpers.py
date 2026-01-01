@@ -19,14 +19,16 @@ def calculate_sla_deadline(
     if created_at is None:
         created_at = datetime.utcnow()
     
+    # SLA Policy: 2 Months (60 Days) for all complaints
+    # Warnings at 7 days remaining
     sla_hours = {
-        SeverityLevel.CRITICAL.value: settings.SLA_CRITICAL,
-        SeverityLevel.HIGH.value: settings.SLA_HIGH,
-        SeverityLevel.MEDIUM.value: settings.SLA_MEDIUM,
-        SeverityLevel.LOW.value: settings.SLA_LOW
+        SeverityLevel.CRITICAL.value: 24 * 60, # 1440 hours
+        SeverityLevel.HIGH.value: 24 * 60,
+        SeverityLevel.MEDIUM.value: 24 * 60,
+        SeverityLevel.LOW.value: 24 * 60
     }
     
-    hours = sla_hours.get(severity, settings.SLA_MEDIUM)
+    hours = sla_hours.get(severity, 24 * 60)
     return created_at + timedelta(hours=hours)
 
 

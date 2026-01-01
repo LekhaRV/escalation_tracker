@@ -30,7 +30,9 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 async def list_users(
     role: Optional[UserRole] = Query(None),
     team: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
     status: Optional[UserStatus] = Query(None),
+    search: Optional[str] = Query(None, description="Search by name or email"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(require_admin_or_manager),
@@ -38,11 +40,13 @@ async def list_users(
 ):
     """List all users in organization"""
     service = UserService(db)
-    result = await service.get_users(
+    result = await service.get_users_with_stats(
         org_id=current_user.org_id,
         role=role,
         team=team,
+        department=department,
         status=status,
+        search=search,
         page=page,
         page_size=page_size
     )
@@ -56,6 +60,26 @@ async def list_users(
         page_size=result["page_size"],
         total_pages=result["total_pages"]
     )
+
+
+@router.get(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    summary="Get user details",
+    description="Get user details by ID"
+)
+async def get_user(
+    user_id: UUID,
+    current_user: User = Depends(require_admin_or_manager),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get user details"""
+    try:
+        service = UserService(db)
+        user = await service.get_user_by_id(user_id, current_user.org_id)
+        return UserResponse.model_validate(user)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.post(

@@ -2,26 +2,239 @@
 Tarento AI Complaint Tracking System - Complaints API Endpoints
 """
 
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import User
+from app.utils.constants import UserRole
 from app.schemas import (
     ComplaintCreate, ComplaintUpdate, ComplaintBulkRequest,
     ComplaintDetailResponse, ComplaintBriefResponse,
     ComplaintListResponse, ComplaintBulkResponse,
     ComplaintCategoryResponse, ComplaintAssignmentResponse,
-    ComplaintEscalationResponse
+    ComplaintEscalationResponse, AssignableUserResponse
 )
 from app.services.complaint_service import ComplaintService
-from app.api.deps import get_current_user, require_admin
-from app.utils.constants import ComplaintStatus, SeverityLevel
+from app.api.deps import get_current_user, require_admin, require_admin_or_manager
+from app.utils.constants import ComplaintStatus, SeverityLevel, CATEGORY_DEPARTMENT_MAP
+from app.utils.helpers import calculate_assignment_score, get_category_keywords
 from app.core.exceptions import NotFoundError, AuthorizationError
+from app.models import Project, ProjectTeamMember
+from app.services.gemini_service import gemini_service
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
+
+
+@router.post(
+    "/{complaint_id}/recommend-resolution",
+    response_model=List[str],
+    summary="Get AI resolution steps",
+    description="Generate AI-powered resolution recommendations for a complaint"
+)
+async def recommend_resolution(
+    complaint_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate resolution recommendations"""
+    service = ComplaintService(db)
+    try:
+        complaint = await service.get_complaint_by_id(complaint_id, current_user.org_id)
+        
+        category = "General"
+        severity = "Medium"
+        if complaint.category:
+            category = f"{complaint.category.category_type} ({complaint.category.sub_category})"
+            severity = complaint.category.severity or "Medium"
+            
+        steps = await gemini_service.generate_resolution_recommendations(
+            subject=complaint.subject,
+            description=complaint.description,
+            category=category,
+            severity=severity
+        )
+        return steps
+        
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get(
+    "/{complaint_id}/assignable-users",
+    response_model=List[AssignableUserResponse],
+    summary="Get AI-recommended agents",
+    description="Get list of agents scored by relevance (skills, workload, project) for this complaint."
+)
+async def get_assignable_users(
+    complaint_id: UUID,
+    current_user: User = Depends(require_admin_or_manager),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get list of users eligible for assignment with AI scores"""
+    service = ComplaintService(db)
+    
+    # 1. Get complaint details with permission check for Managers
+    try:
+        complaint = await service.get_complaint_by_id(complaint_id, current_user.org_id)
+        
+        # Enforce Manager Restrictions: Can only see/assign for projects they manage/lead
+        if current_user.role == UserRole.MANAGER:
+            is_valid_project = False
+            # Check if PM or Team Lead
+            if complaint.project and (
+                complaint.project.project_manager_id == current_user.user_id or 
+                complaint.project.team_lead_id == current_user.user_id
+            ):
+                is_valid_project = True
+            
+            # Check if project member? (Usually managers manage projects, but requirement says "projects under him")
+            # We will stick to PM/Lead check. If strict ownership needed. 
+            # Or if they are Department Manager?
+            # For now, if project is missing, Manager can't see it? Or generally managers supervise dept?
+            # Let's check Dept Manager link.
+            # If complaint has no project, can Manager assign? 
+            # If compliant is in Manager's department?
+            # Let's iterate: PM/Lead OR Dept Manager.
+            
+            # Simplified for MVP: Check PM/Lead ownership
+            if complaint.project_id and not is_valid_project:
+                # Extra check: Department Manager
+                if hasattr(current_user, 'managed_department') and current_user.managed_department:
+                     # If project is in this dept or complaint category is mapped to this dept?
+                     # A bit complex. Let's start with strict Project Manager restriction as requested.
+                     pass 
+
+            if complaint.project_id and not is_valid_project:
+                 raise AuthorizationError("Managers can only assign agents for their own projects")
+                 
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+        
+    # 2. Determine Scope & Candidates
+    candidates = []
+    
+    # Context for scoring
+    severity = SeverityLevel.MEDIUM
+    category_type = "support"
+    sub_category = ""
+    
+    if complaint.category:
+        severity = complaint.category.severity
+        category_type = complaint.category.category_type or "support"
+        sub_category = complaint.category.sub_category or ""
+        
+    severity_val = severity.value if hasattr(severity, "value") else str(severity)
+    keywords = get_category_keywords(category_type, sub_category)
+    
+    # Strategy A: Project Team (Preferred)
+    if complaint.project_id:
+        # Load project members
+        stmt = select(ProjectTeamMember).where(
+            ProjectTeamMember.project_id == complaint.project_id,
+            ProjectTeamMember.is_active == True
+        ).options(selectinload(ProjectTeamMember.user))
+        result = await db.execute(stmt)
+        team_members = result.scalars().all()
+        
+        for tm in team_members:
+            if not tm.user: continue
+            
+            # Calculate score
+            score = calculate_assignment_score(
+                role=tm.role,
+                specialization=tm.specialization or [],
+                workload=tm.current_workload or 0,
+                workload_capacity=tm.workload_capacity or 10,
+                severity=severity_val,
+                category_keywords=keywords
+            )
+            
+            candidates.append({
+                "user": tm.user,
+                "score": score,
+                "reason": f"Project Member ({tm.role})",
+                "workload": tm.current_workload or 0,
+                "capacity": tm.workload_capacity or 10
+            })
+            
+    # Strategy B: Department Fallback (if no candidates yet)
+    if not candidates:
+        target_dept_name = CATEGORY_DEPARTMENT_MAP.get(category_type, "Support")
+        
+        # Import Department model relative to this file location
+        from app.models.department import Department
+        
+        # Correct Query: Join User -> Department
+        stmt = select(User).join(Department, User.department_id == Department.department_id).where(
+            User.org_id == current_user.org_id,
+            Department.name == target_dept_name,
+            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER]),
+            User.status == "active"
+        )
+        result = await db.execute(stmt)
+        users = result.scalars().all()
+        
+        for u in users:
+            score = 50.0 # Base score for dept match
+            candidates.append({
+                "user": u,
+                "score": score,
+                "reason": f"Department Match ({target_dept_name})",
+                "workload": 0,
+                "capacity": 10
+            })
+            
+    # Strategy C: Global Fallback (Return ALL active agents if still empty)
+    if not candidates:
+        # Fetch top 20 active agents/admins to ensure list is never empty
+        stmt = select(User).where(
+            User.org_id == current_user.org_id,
+            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER]),
+            User.status == "active"
+        ).limit(20)
+        result = await db.execute(stmt)
+        users = result.scalars().all()
+        
+        for u in users:
+            candidates.append({
+                "user": u,
+                "score": 10.0, # Low score
+                "reason": "General Pool (Fallback)",
+                "workload": 0,
+                "capacity": 10
+            })
+
+    # Sort by score desc
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Build response
+    response = []
+    for idx, c in enumerate(candidates):
+        # Relaxed Recommendation Logic:
+        # Mark as recommended if Score >= 50 (Strong Match)
+        # OR if they are in the top 3 and Score >= 30 (Decent relative match)
+        is_recommended = (c["score"] >= 50) or ((idx < 3) and (c["score"] >= 30))
+        
+        response.append(AssignableUserResponse(
+            user_id=c["user"].user_id,
+            name=c["user"].name,
+            email=c["user"].email,
+            role=c["user"].role,
+            match_score=c["score"],
+            is_recommended=is_recommended,
+            recommendation_reason=c["reason"],
+            workload_current=c["workload"],
+            workload_capacity=c["capacity"]
+        ))
+        
+    return response
 
 
 @router.get(

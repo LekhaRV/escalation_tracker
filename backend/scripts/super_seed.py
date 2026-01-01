@@ -85,15 +85,15 @@ async def super_seed():
                 )
                 categories_to_add.append(cat)
                 
-                # Assignment (80% chance)
                 if assignee and random.random() > 0.2:
                     complaint.status = ComplaintStatus.IN_PROGRESS
                     assignment = ComplaintAssignment(
                         complaint_id=c_id,
-                        user_id=assignee.user_id,
-                        status="assigned",
+                        assigned_to_user_id=assignee.user_id,
+                        assignment_reason="random_seed",
                         assigned_at=date,
-                        sla_deadline=date + timedelta(hours=24)
+                        sla_deadline=date + timedelta(days=60), # Updated for 60-day policy
+                        assigned_by="system"
                     )
                     assignments_to_add.append(assignment)
         

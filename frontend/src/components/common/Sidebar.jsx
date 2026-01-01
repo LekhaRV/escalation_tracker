@@ -4,9 +4,10 @@ import {
     MessageSquare,
     Briefcase,
     BarChart2,
-    Settings,
+    Users,
     LogOut,
-    AlertCircle
+    AlertCircle,
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,11 +19,11 @@ function Sidebar() {
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
         { name: 'Complaints', href: '/complaints', icon: MessageSquare },
         { name: 'Projects', href: '/projects', icon: Briefcase },
-        { name: 'Analytics', href: '/analytics', icon: BarChart2 },
     ];
 
-    // Add Settings for admins
-    if (user?.role === 'admin') {
+    // Add Admin links
+    if (['admin', 'ADMIN'].includes(user?.role)) {
+        navigation.push({ name: 'Users', href: '/users', icon: Users });
         navigation.push({ name: 'Settings', href: '/settings', icon: Settings });
     }
 
@@ -50,8 +51,8 @@ function Sidebar() {
                             key={item.name}
                             to={item.href}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${active
-                                    ? 'bg-primary-500/10 text-primary-400'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-primary-500/10 text-primary-400'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <item.icon className={`w-5 h-5 transition-colors ${active ? 'text-primary-400' : 'text-gray-500 group-hover:text-white'

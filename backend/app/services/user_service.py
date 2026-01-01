@@ -6,13 +6,15 @@ User management operations
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
+from sqlalchemy.orm import selectinload
 
 from app.models import User
 from app.schemas import UserCreate, UserUpdate, UserAdminUpdate, UserBriefResponse
 from app.core.security import get_password_hash
 from app.core.exceptions import NotFoundError, ConflictError, AuthorizationError
-from app.utils.constants import UserRole, UserStatus
+from app.utils.constants import UserRole, UserStatus, ComplaintStatus
+from app.models import Complaint, ComplaintEscalation, ComplaintAssignment
 
 
 class UserService:
@@ -24,10 +26,12 @@ class UserService:
     async def get_user_by_id(self, user_id: UUID, org_id: UUID) -> User:
         """Get user by ID within organization"""
         result = await self.db.execute(
-            select(User).where(
+            select(User)
+            .where(
                 User.user_id == user_id,
                 User.org_id == org_id
             )
+            .options(selectinload(User.department_link))
         )
         user = result.scalar_one_or_none()
         
@@ -43,6 +47,7 @@ class UserService:
         team: Optional[str] = None,
         department: Optional[str] = None,
         status: Optional[UserStatus] = None,
+        search: Optional[str] = None,
         page: int = 1,
         page_size: int = 20
     ) -> dict:
@@ -57,6 +62,16 @@ class UserService:
             query = query.where(User.department == department)
         if status:
             query = query.where(User.status == status)
+        if search:
+            query = query.where(
+                or_(
+                    User.name.ilike(f"%{search}%"),
+                    User.email.ilike(f"%{search}%")
+                )
+            )
+            
+        # Eager load department for department_name property
+        query = query.options(selectinload(User.department_link))
         
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -77,6 +92,61 @@ class UserService:
             "page_size": page_size,
             "total_pages": (total + page_size - 1) // page_size
         }
+    
+    async def get_users_with_stats(
+        self,
+        org_id: UUID,
+        role: Optional[UserRole] = None,
+        team: Optional[str] = None,
+        department: Optional[str] = None,
+        status: Optional[UserStatus] = None,
+        search: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20
+    ) -> dict:
+        """Get users with analytics stats"""
+        result = await self.get_users(org_id, role, team, department, status, search, page, page_size)
+        users = result["items"]
+        
+        if not users:
+            return result
+            
+        user_ids = [u.user_id for u in users]
+        
+        # 1. Get Escalation Counts (Active Complaints Assigned: NEW, CATEGORIZED, IN_PROGRESS)
+        # User defined "Escalations" as "Complaints", so this tracks their active workload
+        esc_stmt = (
+            select(ComplaintAssignment.assigned_to_user_id, func.count())
+            .join(Complaint, ComplaintAssignment.complaint_id == Complaint.complaint_id)
+            .where(
+                ComplaintAssignment.assigned_to_user_id.in_(user_ids),
+                Complaint.status.in_([ComplaintStatus.NEW, ComplaintStatus.CATEGORIZED, ComplaintStatus.IN_PROGRESS])
+            )
+            .group_by(ComplaintAssignment.assigned_to_user_id)
+        )
+        esc_result = await self.db.execute(esc_stmt)
+        esc_map = {row[0]: row[1] for row in esc_result.all()}
+        
+        # 2. Get Resolution Counts (complaints assigned to user that are resolved/closed)
+        res_stmt = (
+            select(ComplaintAssignment.assigned_to_user_id, func.count())
+            .join(Complaint, ComplaintAssignment.complaint_id == Complaint.complaint_id)
+            .where(
+                ComplaintAssignment.assigned_to_user_id.in_(user_ids),
+                Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED])
+            )
+            .group_by(ComplaintAssignment.assigned_to_user_id)
+        )
+        
+        res_result = await self.db.execute(res_stmt)
+        res_map = {row[0]: row[1] for row in res_result.all()}
+        
+        # Attach to user objects
+        for user in users:
+            user.escalations_count = esc_map.get(user.user_id, 0)
+            user.resolutions_count = res_map.get(user.user_id, 0)
+            
+        return result
     
     async def create_user(
         self,

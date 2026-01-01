@@ -50,6 +50,7 @@ class ProjectBase(BaseModel):
     status: ProjectStatus = ProjectStatus.PLANNING
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    department_id: UUID
 
 
 # Request schemas
@@ -57,6 +58,7 @@ class ProjectCreate(ProjectBase):
     """Schema for creating a project"""
     project_manager_id: Optional[UUID] = None
     team_lead_id: Optional[UUID] = None
+    department_id: UUID
 
 
 class ProjectUpdate(BaseModel):
@@ -70,6 +72,7 @@ class ProjectUpdate(BaseModel):
     team_lead_id: Optional[UUID] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    department_id: Optional[UUID] = None
 
 
 # Response schemas
@@ -78,6 +81,8 @@ class ProjectBriefResponse(BaseModel):
     project_id: UUID
     org_id: UUID
     project_name: str
+    department_id: UUID
+    department_name: Optional[str] = None
     project_code: Optional[str] = None
     client_name: Optional[str] = None
     status: ProjectStatus
@@ -98,6 +103,8 @@ class ProjectDetailResponse(BaseModel):
     project_id: UUID
     org_id: UUID
     project_name: str
+    department_id: UUID
+    department_name: Optional[str] = None
     project_code: Optional[str] = None
     client_name: Optional[str] = None
     description: Optional[str] = None

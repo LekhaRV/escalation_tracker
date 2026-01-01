@@ -59,6 +59,8 @@ async def list_projects(
             end_date=p.end_date,
             project_manager_name=p.project_manager.name if p.project_manager else None,
             team_lead_name=p.team_lead.name if p.team_lead else None,
+            department_id=p.department_id,
+            department_name=p.department.name if p.department else None,
             team_count=getattr(p, 'team_count', len(p.team_members)),
             complaints_count=getattr(p, 'complaints_count', 0),
             created_at=p.created_at
@@ -209,6 +211,8 @@ def _build_detail_response(project, stats):
         project_manager_name=project.project_manager.name if project.project_manager else None,
         team_lead_id=project.team_lead_id,
         team_lead_name=project.team_lead.name if project.team_lead else None,
+        department_id=project.department_id,
+        department_name=project.department.name if project.department else None,
         created_at=project.created_at,
         updated_at=project.updated_at,
         team_members=team_members,

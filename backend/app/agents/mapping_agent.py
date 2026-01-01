@@ -157,15 +157,18 @@ class MappingAgent(BaseAgent):
     async def _find_user_by_department(
         self,
         org_id: UUID,
-        department: str
+        department_name: str
     ) -> Optional[User]:
         """Find user in department with lowest workload"""
         from app.utils.constants import UserStatus
+        from app.models.department import Department
         
+        # Join with Department table to match by name
+        # Explicit ON clause required due to multiple FKs
         result = await self.db.execute(
-            select(User).where(
+            select(User).join(Department, User.department_id == Department.department_id).where(
                 User.org_id == org_id,
-                User.department == department,
+                Department.name == department_name,
                 User.status == UserStatus.ACTIVE
             ).limit(5)
         )

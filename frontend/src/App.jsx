@@ -6,8 +6,9 @@ import Complaints from './pages/Complaints';
 import ComplaintDetail from './pages/ComplaintDetail';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
-import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Users from './pages/Users';
+import UserDetail from './pages/UserDetail';
 import Layout from './components/common/Layout';
 
 // Protected Route wrapper
@@ -46,8 +47,10 @@ function App() {
                         <Route path="complaints/:id" element={<ComplaintDetail />} />
                         <Route path="projects" element={<Projects />} />
                         <Route path="projects/:id" element={<ProjectDetail />} />
-                        <Route path="analytics" element={<Analytics />} />
+
                         <Route path="settings" element={<Settings />} />
+                        <Route path="users" element={<Users />} />
+                        <Route path="users/:id" element={<UserDetail />} />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

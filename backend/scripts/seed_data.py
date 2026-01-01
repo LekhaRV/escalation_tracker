@@ -11,11 +11,12 @@ import random
 # Add parent dir to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import AsyncSessionLocal, init_db, engine
+from sqlalchemy import text
+from app.database import AsyncSessionLocal, init_db, engine, Base
 from app.models import (
     Organization, User, Project, ProjectTeamMember,
     Complaint, ComplaintCategory, ComplaintAssignment,
-    ComplaintInsight
+    ComplaintInsight, Department
 )
 from app.core.security import get_password_hash
 from app.utils.constants import (
@@ -24,6 +25,11 @@ from app.utils.constants import (
 )
 
 async def seed_data():
+    print("Dropping schema (CASCADE)...")
+    async with engine.begin() as conn:
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+        
     print("Creating tables...")
     await init_db()
     
@@ -39,8 +45,17 @@ async def seed_data():
         )
         db.add(org)
         await db.flush()
+
+        # 2. Create Departments
+        engineering = Department(org_id=org.org_id, name="Engineering")
+        delivery = Department(org_id=org.org_id, name="Delivery")
+        hr = Department(org_id=org.org_id, name="HR")
+        it = Department(org_id=org.org_id, name="IT")
+
+        db.add_all([engineering, delivery, hr, it])
+        await db.flush()
         
-        # 2. Create Users
+        # 3. Create Users
         users = []
         # Admin
         admin = User(
@@ -50,11 +65,11 @@ async def seed_data():
             name="System Admin",
             role=UserRole.ADMIN,
             status=UserStatus.ACTIVE,
-            department="IT"
+            department_id=it.department_id
         )
         users.append(admin)
         
-        # Manager
+        # Manager (Delivery Head)
         manager = User(
             org_id=org.org_id,
             email="manager@tarento.com",
@@ -62,7 +77,7 @@ async def seed_data():
             name="Project Manager",
             role=UserRole.MANAGER,
             status=UserStatus.ACTIVE,
-            department="Delivery"
+            department_id=delivery.department_id
         )
         users.append(manager)
         
@@ -76,7 +91,7 @@ async def seed_data():
                 name=f"Developer {i+1}",
                 role=UserRole.AGENT,
                 status=UserStatus.ACTIVE,
-                department="Engineering",
+                department_id=engineering.department_id,
                 team="Backend" if i < 3 else "Frontend"
             )
             devs.append(dev)
@@ -84,8 +99,14 @@ async def seed_data():
             
         db.add_all(users)
         await db.flush()
+
+        # Link Managers to Departments
+        delivery.manager_id = manager.user_id
+        engineering.manager_id = devs[0].user_id # Temporary logic: make dev1 eng lead
+        db.add_all([delivery, engineering])
+        await db.flush()
         
-        # 3. Create Projects
+        # 4. Create Projects
         projects = []
         p1 = Project(
             org_id=org.org_id,
@@ -96,7 +117,8 @@ async def seed_data():
             status=ProjectStatus.ACTIVE,
             project_manager_id=manager.user_id,
             team_lead_id=devs[0].user_id,
-            start_date=datetime.now().date()
+            start_date=datetime.now().date(),
+            department_id=delivery.department_id
         )
         projects.append(p1)
         
@@ -109,14 +131,15 @@ async def seed_data():
             status=ProjectStatus.ACTIVE,
             project_manager_id=manager.user_id,
             team_lead_id=devs[1].user_id,
-            start_date=datetime.now().date()
+            start_date=datetime.now().date(),
+            department_id=engineering.department_id
         )
         projects.append(p2)
         
         db.add_all(projects)
         await db.flush()
         
-        # 4. Add Team Members
+        # 5. Add Team Members
         members = []
         for dev in devs:
             # Add to P1

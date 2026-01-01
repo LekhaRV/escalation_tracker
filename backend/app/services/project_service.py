@@ -35,6 +35,7 @@ class ProjectService:
         
         if include_relations:
             query = query.options(
+                selectinload(Project.department),
                 selectinload(Project.project_manager),
                 selectinload(Project.team_lead),
                 selectinload(Project.team_members).selectinload(ProjectTeamMember.user)
@@ -67,7 +68,8 @@ class ProjectService:
         query = query.options(
             selectinload(Project.project_manager),
             selectinload(Project.team_lead),
-            selectinload(Project.team_members)
+            selectinload(Project.team_members),
+            selectinload(Project.department)
         )
         
         # Get total count
@@ -113,6 +115,13 @@ class ProjectService:
         if created_by.role not in [UserRole.ADMIN, UserRole.MANAGER]:
             raise AuthorizationError("Only admins and managers can create projects")
         
+        # Manager Department Restriction
+        if created_by.role == UserRole.MANAGER:
+            if not created_by.department_id:
+                raise AuthorizationError("Managers must constitute to a department to create projects")
+            if data.department_id != created_by.department_id:
+                raise AuthorizationError("Managers can only create projects in their own department")
+        
         project = Project(
             org_id=org_id,
             project_name=data.project_name,
@@ -143,6 +152,11 @@ class ProjectService:
             raise AuthorizationError("Only admins and managers can update projects")
         
         project = await self.get_project_by_id(project_id, org_id, include_relations=False)
+        
+        # Manager Department Restriction
+        if updated_by.role == UserRole.MANAGER:
+            if project.department_id != updated_by.department_id:
+                raise AuthorizationError("Managers can only update projects in their own department")
         
         if data.project_name is not None:
             project.project_name = data.project_name
@@ -178,6 +192,11 @@ class ProjectService:
             raise AuthorizationError("Only admins and managers can manage project teams")
         
         project = await self.get_project_by_id(project_id, org_id)
+
+        # Manager Department Restriction
+        if managed_by.role == UserRole.MANAGER:
+             if project.department_id != managed_by.department_id:
+                raise AuthorizationError("Managers can only manage teams for projects in their own department")
         
         # Verify user exists
         result = await self.db.execute(
@@ -189,6 +208,10 @@ class ProjectService:
         user = result.scalar_one_or_none()
         if not user:
             raise NotFoundError(f"User {data.user_id} not found")
+            
+        # Enforce Department Affinity: User must belong to Project's Department
+        if user.department_id != project.department_id:
+             raise AuthorizationError(f"User {user.email} belongs to a different department. Projects can only have team members from the same department.")
         
         if data.action == "add":
             # Check if already a member
