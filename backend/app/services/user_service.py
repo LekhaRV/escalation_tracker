@@ -45,9 +45,11 @@ class UserService:
         org_id: UUID,
         role: Optional[UserRole] = None,
         team: Optional[str] = None,
-        department: Optional[str] = None,
+        department_id: Optional[UUID] = None,
         status: Optional[UserStatus] = None,
         search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
         page: int = 1,
         page_size: int = 20
     ) -> dict:
@@ -58,8 +60,8 @@ class UserService:
             query = query.where(User.role == role)
         if team:
             query = query.where(User.team == team)
-        if department:
-            query = query.where(User.department == department)
+        if department_id:
+            query = query.where(User.department_id == department_id)
         if status:
             query = query.where(User.status == status)
         if search:
@@ -78,9 +80,19 @@ class UserService:
         total_result = await self.db.execute(count_query)
         total = total_result.scalar()
         
+        # Apply sorting
+        if hasattr(User, sort_by):
+            sort_attr = getattr(User, sort_by)
+            if sort_order.lower() == "desc":
+                query = query.order_by(sort_attr.desc())
+            else:
+                query = query.order_by(sort_attr.asc())
+        else:
+            # Fallback to created_at desc
+            query = query.order_by(User.created_at.desc())
+        
         # Apply pagination
         query = query.offset((page - 1) * page_size).limit(page_size)
-        query = query.order_by(User.created_at.desc())
         
         result = await self.db.execute(query)
         users = result.scalars().all()
@@ -98,14 +110,16 @@ class UserService:
         org_id: UUID,
         role: Optional[UserRole] = None,
         team: Optional[str] = None,
-        department: Optional[str] = None,
+        department_id: Optional[UUID] = None,
         status: Optional[UserStatus] = None,
         search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
         page: int = 1,
         page_size: int = 20
     ) -> dict:
         """Get users with analytics stats"""
-        result = await self.get_users(org_id, role, team, department, status, search, page, page_size)
+        result = await self.get_users(org_id, role, team, department_id, status, search, sort_by, sort_order, page, page_size)
         users = result["items"]
         
         if not users:
@@ -173,14 +187,14 @@ class UserService:
             name=data.name,
             role=data.role,
             team=data.team,
-            department=data.department,
+            department_id=data.department_id,
             status=UserStatus.ACTIVE
         )
         
         self.db.add(user)
         await self.db.flush()
         
-        return user
+        return await self.get_user_by_id(user.user_id, org_id)
     
     async def update_user_profile(
         self,
@@ -192,11 +206,11 @@ class UserService:
             user.name = data.name
         if data.team is not None:
             user.team = data.team
-        if data.department is not None:
-            user.department = data.department
+        if data.department_id is not None:
+            user.department_id = data.department_id
         
         await self.db.flush()
-        return user
+        return await self.get_user_by_id(user.user_id, user.org_id)
     
     async def admin_update_user(
         self,
@@ -228,24 +242,24 @@ class UserService:
             user.role = data.role
         if data.team is not None:
             user.team = data.team
-        if data.department is not None:
-            user.department = data.department
+        if data.department_id is not None:
+            user.department_id = data.department_id
         if data.status is not None:
             user.status = data.status
         
         await self.db.flush()
-        return user
+        return await self.get_user_by_id(user.user_id, org_id)
     
-    async def get_users_by_department(
+    async def get_users_by_department_id(
         self,
         org_id: UUID,
-        department: str
+        department_id: UUID
     ) -> List[User]:
         """Get active users in a department"""
         result = await self.db.execute(
             select(User).where(
                 User.org_id == org_id,
-                User.department == department,
+                User.department_id == department_id,
                 User.status == UserStatus.ACTIVE
             )
         )

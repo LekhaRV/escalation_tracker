@@ -36,7 +36,7 @@ function Dashboard() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="flex items-center gap-3 text-slate-400">
+                <div className="flex items-center gap-3 text-slate-500">
                     <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     <span>Loading dashboard...</span>
                 </div>
@@ -44,7 +44,7 @@ function Dashboard() {
         );
     }
 
-    if (!stats) return <div className="text-slate-400">Failed to load data</div>;
+    if (!stats) return <div className="text-slate-500">Failed to load data</div>;
 
     const severityData = [
         { name: 'Critical', value: stats.critical_count || 0, color: '#ef4444' },
@@ -62,19 +62,19 @@ function Dashboard() {
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
-                            <Brain className="w-5 h-5 text-indigo-400" />
+                            <Brain className="w-5 h-5 text-indigo-600" />
                             <span className="ai-badge">AI Dashboard</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-white mb-1">
+                        <h1 className="text-2xl font-bold text-slate-900 mb-1">
                             Good {getTimeOfDay()}, {user?.name?.split(' ')[0]}
                         </h1>
-                        <p className="text-slate-400 text-sm max-w-xl">
+                        <p className="text-slate-500 text-sm max-w-xl">
                             {getExecutiveSummary(stats)}
                         </p>
                     </div>
                     <div className="text-right hidden lg:block">
-                        <div className="text-3xl font-bold text-white">{stats.sla_compliance_rate}%</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wide">SLA Compliance</div>
+                        <div className="text-3xl font-bold text-slate-900">{stats.sla_compliance_rate}%</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wide">SLA Compliance</div>
                     </div>
                 </div>
             </div>
@@ -112,20 +112,14 @@ function Dashboard() {
                 />
             </div>
 
-            {/* AI Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AIPatternCard patterns={stats.recent_patterns} />
-                <AIRecommendationsPanel insights={stats.recent_insights} />
-            </div>
-
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Trend Chart */}
                 <div className="card lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-indigo-400" />
-                            <h2 className="text-lg font-semibold text-white">Complaint Trends</h2>
+                            <TrendingUp className="w-5 h-5 text-indigo-600" />
+                            <h2 className="text-lg font-semibold text-slate-900">Complaint Trends</h2>
                         </div>
                         <span className="text-xs text-slate-500">Last 7 days</span>
                     </div>
@@ -138,7 +132,7 @@ function Dashboard() {
                                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff08" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                 <XAxis
                                     dataKey="name"
                                     axisLine={false}
@@ -153,12 +147,14 @@ function Dashboard() {
                                 />
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor: '#1e293b',
-                                        border: '1px solid #334155',
+                                        backgroundColor: '#ffffff',
+                                        border: '1px solid #e2e8f0',
                                         borderRadius: '12px',
-                                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                        color: '#0f172a'
                                     }}
-                                    cursor={{ stroke: '#ffffff10' }}
+                                    itemStyle={{ color: '#0f172a' }}
+                                    cursor={{ stroke: '#cbd5e1' }}
                                 />
                                 <Area
                                     type="monotone"
@@ -175,7 +171,7 @@ function Dashboard() {
 
                 {/* Severity Distribution */}
                 <div className="card">
-                    <h2 className="text-lg font-semibold text-white mb-6">By Severity</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 mb-6">By Severity</h2>
                     <div className="h-48 relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -192,49 +188,39 @@ function Dashboard() {
                                 </Pie>
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor: '#1e293b',
-                                        borderColor: '#334155',
-                                        borderRadius: '8px'
+                                        backgroundColor: '#ffffff',
+                                        borderColor: '#e2e8f0',
+                                        borderRadius: '8px',
+                                        color: '#0f172a'
                                     }}
+                                    itemStyle={{ color: '#0f172a' }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-2xl font-bold text-white">{stats.total_complaints}</span>
-                            <span className="text-xs text-slate-400">Total</span>
+                            <span className="text-2xl font-bold text-slate-900">{stats.total_complaints}</span>
+                            <span className="text-xs text-slate-500">Total</span>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
                         {severityData.map((item) => (
-                            <div key={item.name} className="flex items-center gap-2 text-sm text-slate-400">
+                            <div key={item.name} className="flex items-center gap-2 text-sm text-slate-500">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
                                 <span>{item.name}</span>
-                                <span className="ml-auto text-white font-medium">{item.value}</span>
+                                <span className="ml-auto text-slate-900 font-medium">{item.value}</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <QuickStatCard
-                    label="Today's Volume"
-                    value={stats.complaints_today}
-                    change={stats.complaints_today > 0 ? '+' + stats.complaints_today : '0'}
-                />
-                <QuickStatCard
-                    label="This Week"
-                    value={stats.complaints_this_week}
-                    change="7 days"
-                />
-                <QuickStatCard
-                    label="Overdue"
-                    value={stats.overdue_complaints}
-                    change={stats.overdue_complaints > 0 ? 'Action needed' : 'On track'}
-                    alert={stats.overdue_complaints > 0}
-                />
+            {/* AI Analytics Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <AIPatternCard patterns={stats.recent_patterns} />
+                <AIRecommendationsPanel insights={stats.recent_insights} />
             </div>
+
+
 
             {/* AI Analyst Widget */}
             <AIAnalystWidget />
@@ -269,14 +255,14 @@ function getExecutiveSummary(stats) {
 
 function StatCard({ title, value, icon: Icon, subtitle, color, alert }) {
     const colors = {
-        indigo: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
-        purple: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-        red: 'bg-red-500/15 text-red-400 border-red-500/20',
-        emerald: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+        indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+        purple: 'bg-purple-50 text-purple-600 border-purple-100',
+        red: 'bg-red-50 text-red-600 border-red-100',
+        emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     };
 
     return (
-        <div className={`card p-5 ${alert ? 'border-red-500/30' : ''} group hover:-translate-y-0.5 transition-all`}>
+        <div className={`card card-${color} p-5 ${alert ? 'border-red-500/30' : ''} group hover:-translate-y-0.5 transition-all`}>
             <div className="flex justify-between items-start mb-4">
                 <div className={`p-2.5 rounded-xl border ${colors[color]}`}>
                     <Icon className="w-5 h-5" />
@@ -288,25 +274,13 @@ function StatCard({ title, value, icon: Icon, subtitle, color, alert }) {
                     </span>
                 )}
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">{value}</h3>
+            <h3 className="text-3xl font-bold text-slate-900 mb-1">{value}</h3>
             <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{title}</p>
             <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
         </div>
     );
 }
 
-function QuickStatCard({ label, value, change, alert }) {
-    return (
-        <div className={`card p-4 flex justify-between items-center ${alert ? 'border-amber-500/30' : ''}`}>
-            <div>
-                <span className="text-slate-400 text-sm">{label}</span>
-                <div className={`text-2xl font-bold ${alert ? 'text-amber-400' : 'text-white'}`}>{value}</div>
-            </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${alert ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
-                {change}
-            </span>
-        </div>
-    );
-}
+
 
 export default Dashboard;

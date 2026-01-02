@@ -76,6 +76,7 @@ class ComplaintBase(BaseModel):
     """Base complaint schema"""
     subject: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = None
+    ai_summary: Optional[str] = None
     customer_name: Optional[str] = Field(None, max_length=255)
     customer_email: Optional[EmailStr] = None
     customer_phone: Optional[str] = Field(None, max_length=50)
@@ -153,6 +154,7 @@ class ComplaintDetailResponse(BaseModel):
     customer_phone: Optional[str] = None
     subject: str
     description: Optional[str] = None
+    ai_summary: Optional[str] = None
     raw_email_content: Optional[str] = None
     status: ComplaintStatus
     resolution_notes: Optional[str] = None

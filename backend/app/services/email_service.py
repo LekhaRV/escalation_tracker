@@ -141,9 +141,6 @@ class EmailService:
                 "reason": "Not a complaint",
                 "category": "ignored"
             }
-        # Parse sender email properly (handle "Name" <email@domain.com> format)
-        import re
-        email_match = re.search(r'<(.+?)>', sender)
         if email_match:
             parsed_email = email_match.group(1)
             # Name is everything before the angle bracket
@@ -154,10 +151,18 @@ class EmailService:
             parsed_email = sender
             parsed_name = sender.split('@')[0].replace('.', ' ').title()
         
-        # 2. Create basic complaint
+        # 2. Generate AI Summary (New)
+        try:
+            ai_summary = await gemini_service.summarize_complaint(subject, content)
+        except Exception as e:
+            logger.error(f"Failed to generate summary: {e}")
+            ai_summary = None
+
+        # 3. Create basic complaint
         complaint_in = ComplaintCreate(
             subject=subject,
             description=content,
+            ai_summary=ai_summary,
             customer_email=parsed_email,
             customer_name=parsed_name,
             priority=categorization.get("severity", "medium").lower(),

@@ -105,8 +105,8 @@ function Complaints() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Complaints</h1>
-                    <p className="text-gray-400 text-sm">Manage and track customer issues</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Escalations</h1>
+                    <p className="text-slate-500 text-sm">Manage and track customer issues</p>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -130,13 +130,13 @@ function Complaints() {
             {/* Filters & Search */}
             <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                         type="text"
                         placeholder="Search by subject, customer, or ID..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="input pl-14"
+                        className="input pl-14 bg-white border-slate-200 text-slate-900 focus:border-blue-500"
                     />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
@@ -145,8 +145,8 @@ function Complaints() {
                             key={s}
                             onClick={() => setFilter(s)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === s
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                         >
                             {s.replace('_', ' ').toUpperCase()}
@@ -156,11 +156,11 @@ function Complaints() {
             </div>
 
             {/* Table */}
-            <div className="card overflow-hidden p-0">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden p-0">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-white/5 border-b border-white/5 text-xs text-gray-400 uppercase tracking-wider">
+                            <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
                                 <th className="p-4 font-medium">Subject</th>
                                 <th className="p-4 font-medium">Customer</th>
                                 <th className="p-4 font-medium">Status</th>
@@ -170,16 +170,16 @@ function Complaints() {
                                 <th className="p-4 font-medium text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="7" className="p-8 text-center text-gray-400">
+                                    <td colSpan="7" className="p-8 text-center text-slate-500">
                                         Loading complaints...
                                     </td>
                                 </tr>
                             ) : complaints.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="p-8 text-center text-gray-400">
+                                    <td colSpan="7" className="p-8 text-center text-slate-500">
                                         No complaints found.
                                     </td>
                                 </tr>
@@ -187,23 +187,23 @@ function Complaints() {
                                 complaints.map((complaint) => (
                                     <tr
                                         key={complaint.complaint_id}
-                                        className="table-row group cursor-pointer"
+                                        className="table-row group cursor-pointer hover:bg-slate-50"
                                         onClick={() => navigate(`/complaints/${complaint.complaint_id}`)}
                                     >
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded bg-white/5 text-gray-400">
+                                                <div className="p-2 rounded bg-slate-100 text-slate-500">
                                                     <FileText className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-white line-clamp-1">{complaint.subject}</p>
-                                                    <p className="text-xs text-gray-500">#{complaint.complaint_id.slice(0, 8)}</p>
+                                                    <p className="font-medium text-slate-900 line-clamp-1">{complaint.subject}</p>
+                                                    <p className="text-xs text-slate-500">#{complaint.complaint_id.slice(0, 8)}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <p className="text-sm text-gray-300">{complaint.customer_name}</p>
-                                            <p className="text-xs text-gray-500">{complaint.customer_email}</p>
+                                            <p className="text-sm text-slate-700">{complaint.customer_name}</p>
+                                            <p className="text-xs text-slate-500">{complaint.customer_email}</p>
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded text-xs font-medium uppercase ${getStatusBadge(complaint.status)}`}>
@@ -216,30 +216,30 @@ function Complaints() {
                                                     {complaint.severity}
                                                 </span>
                                             ) : (
-                                                <span className="text-gray-500 text-xs">--</span>
+                                                <span className="text-slate-400 text-xs">--</span>
                                             )}
                                         </td>
                                         <td className="p-4">
                                             {complaint.assigned_to_name ? (
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center text-xs font-bold">
+                                                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
                                                         {complaint.assigned_to_name.charAt(0)}
                                                     </div>
-                                                    <span className="text-sm text-gray-300">{complaint.assigned_to_name}</span>
+                                                    <span className="text-sm text-slate-600">{complaint.assigned_to_name}</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-sm text-gray-500 italic">Unassigned</span>
+                                                <span className="text-sm text-slate-400 italic">Unassigned</span>
                                             )}
                                         </td>
-                                        <td className="p-4 text-sm text-gray-400">
+                                        <td className="p-4 text-sm text-slate-500">
                                             {new Date(complaint.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="relative flex items-center gap-2 justify-end">
-                                                {!complaint.assigned_to_name && (
+                                                {!complaint.assigned_to_name && complaint.status !== 'resolved' && (
                                                     <button
                                                         onClick={(e) => openAssignModal(e, complaint)}
-                                                        className="px-2 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 text-xs font-medium rounded transition-colors"
+                                                        className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-medium rounded transition-colors"
                                                     >
                                                         Smart Assign
                                                     </button>
@@ -249,22 +249,24 @@ function Complaints() {
                                                         e.stopPropagation();
                                                         setActionMenuOpen(actionMenuOpen === complaint.complaint_id ? null : complaint.complaint_id);
                                                     }}
-                                                    className="p-2 hover:bg-white/10 rounded px-1 transition-colors"
+                                                    className="p-2 hover:bg-slate-100 rounded px-1 transition-colors"
                                                 >
-                                                    <MoreVertical className="w-4 h-4 text-gray-400" />
+                                                    <MoreVertical className="w-4 h-4 text-slate-400" />
                                                 </button>
                                                 {actionMenuOpen === complaint.complaint_id && (
-                                                    <div className="absolute right-0 top-full mt-1 w-48 rounded-md shadow-lg bg-[#1e293b] ring-1 ring-black ring-opacity-5 z-50">
+                                                    <div className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl bg-white border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-200">
                                                         <div className="py-1" role="menu">
-                                                            <button
-                                                                onClick={(e) => openAssignModal(e, complaint)}
-                                                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 w-full text-left"
-                                                            >
-                                                                {complaint.assigned_to_name ? 'Reassign Agent' : 'Smart Assign Agent'}
-                                                            </button>
+                                                            {complaint.status !== 'resolved' && (
+                                                                <button
+                                                                    onClick={(e) => openAssignModal(e, complaint)}
+                                                                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors"
+                                                                >
+                                                                    {complaint.assigned_to_name ? 'Reassign Agent' : 'Smart Assign Agent'}
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); navigate(`/complaints/${complaint.complaint_id}`) }}
-                                                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 w-full text-left"
+                                                                className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors"
                                                             >
                                                                 View Details
                                                             </button>

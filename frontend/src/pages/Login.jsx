@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { departmentService } from '../services/departmentService';
 import { authService } from '../services/authService';
-import { AlertCircle, ArrowRight, Loader } from 'lucide-react';
+import { AlertCircle, ArrowRight, Loader, Eye, EyeOff } from 'lucide-react';
 
 function Login() {
     const [isLogin, setIsLogin] = useState(true);
@@ -11,6 +11,7 @@ function Login() {
     const [error, setError] = useState(null);
     const [departments, setDepartments] = useState([]);
     const [defaultOrgId, setDefaultOrgId] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -67,30 +68,30 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[#0f172a]">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-slate-50">
             {/* Background decorations */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-[128px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-500/20 rounded-full blur-[128px]" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100 rounded-full blur-[128px]" />
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-100 rounded-full blur-[128px]" />
             </div>
 
-            <div className="w-full max-w-md relative z-10 glass rounded-2xl p-8 shadow-2xl shadow-primary-500/10 border border-white/5">
+            <div className="w-full max-w-md relative z-10 bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl shadow-slate-200 border border-white">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mb-4 shadow-lg shadow-primary-500/25">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/25">
                         <AlertCircle className="w-7 h-7 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                         {isLogin ? 'Welcome back' : 'Create account'}
                     </h1>
-                    <p className="text-gray-400 mt-2 text-sm text-center">
+                    <p className="text-slate-500 mt-2 text-sm text-center">
                         {isLogin
-                            ? 'Enter your credentials to access the Tarento complaint tracker'
+                            ? 'Enter your credentials to access the Escalation Manager'
                             : 'Join your team and start managing complaints effectively'}
                     </p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-center gap-2">
+                    <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
                         {error}
                     </div>
@@ -100,7 +101,7 @@ function Login() {
                     {!isLogin && (
                         <>
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="name">
+                                <label className="block text-xs font-medium text-slate-500 mb-1 ml-1" htmlFor="name">
                                     FULL NAME
                                 </label>
                                 <input
@@ -110,13 +111,13 @@ function Login() {
                                     required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="input"
+                                    className="input bg-white border-slate-200 text-slate-900 focus:border-blue-500"
                                     placeholder="John Doe"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="orgName">
+                                <label className="block text-xs font-medium text-slate-500 mb-1 ml-1" htmlFor="orgName">
                                     ORGANIZATION NAME (Optional)
                                 </label>
                                 <input
@@ -125,14 +126,14 @@ function Login() {
                                     type="text"
                                     value={formData.orgName}
                                     onChange={handleChange}
-                                    className="input"
+                                    className="input bg-white border-slate-200 text-slate-900 focus:border-blue-500"
                                     placeholder="Leave empty to join existing"
                                 />
                             </div>
 
                             {!formData.orgName && (
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="departmentId">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 ml-1" htmlFor="departmentId">
                                         DEPARTMENT
                                     </label>
                                     <select
@@ -141,7 +142,7 @@ function Login() {
                                         required
                                         value={formData.departmentId}
                                         onChange={handleChange}
-                                        className="input"
+                                        className="input bg-white border-slate-200 text-slate-900 focus:border-blue-500"
                                     >
                                         <option value="" disabled>Select Department</option>
                                         {departments.map(dept => (
@@ -156,7 +157,7 @@ function Login() {
                     )}
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="email">
+                        <label className="block text-xs font-medium text-slate-500 mb-1 ml-1" htmlFor="email">
                             EMAIL ADDRESS
                         </label>
                         <input
@@ -166,25 +167,34 @@ function Login() {
                             required
                             value={formData.email}
                             onChange={handleChange}
-                            className="input"
-                            placeholder="name@tarento.com"
+                            className="input bg-white border-slate-200 text-slate-900 focus:border-blue-500"
+                            placeholder="name@company.com"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="password">
+                        <label className="block text-xs font-medium text-slate-500 mb-1 ml-1" htmlFor="password">
                             PASSWORD
                         </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            value={formData.password}
-                            onChange={handleChange}
-                            className="input"
-                            placeholder="••••••••"
-                        />
+                        <div className="relative">
+                            <input
+                                id="password"
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
+                                className="input bg-white border-slate-200 text-slate-900 focus:border-blue-500 pr-10"
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
                     </div>
 
                     <button
@@ -218,7 +228,7 @@ function Login() {
                                 }));
                             }
                         }}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
+                        className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
                     >
                         {isLogin
                             ? "Don't have an account? Sign up"

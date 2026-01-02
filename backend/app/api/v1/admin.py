@@ -30,9 +30,11 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 async def list_users(
     role: Optional[UserRole] = Query(None),
     team: Optional[str] = Query(None),
-    department: Optional[str] = Query(None),
+    department_id: Optional[UUID] = Query(None),
     status: Optional[UserStatus] = Query(None),
     search: Optional[str] = Query(None, description="Search by name or email"),
+    sort_by: str = Query("created_at", description="Field to sort by"),
+    sort_order: str = Query("desc", description="Sort order (asc/desc)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(require_admin_or_manager),
@@ -44,9 +46,11 @@ async def list_users(
         org_id=current_user.org_id,
         role=role,
         team=team,
-        department=department,
+        department_id=department_id,
         status=status,
         search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
         page=page,
         page_size=page_size
     )

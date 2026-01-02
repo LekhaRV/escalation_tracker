@@ -15,11 +15,11 @@ const patternColors = {
 const AIPatternCard = ({ patterns = [] }) => {
     if (!patterns || patterns.length === 0) {
         return (
-            <div className="card-highlight">
+            <div className="card-ai">
                 <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="w-5 h-5 text-indigo-400" />
-                    <h3 className="text-lg font-semibold text-white">AI Detected Patterns</h3>
-                    <span className="ai-badge">AI-Powered</span>
+                    <h3 className="text-lg font-semibold text-slate-900">AI Detected Patterns</h3>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200">AI-Powered</span>
                 </div>
                 <div className="text-center py-8 text-slate-400">
                     <RefreshCw className="w-8 h-8 mx-auto mb-3 opacity-50" />
@@ -31,11 +31,11 @@ const AIPatternCard = ({ patterns = [] }) => {
     }
 
     return (
-        <div className="card-highlight">
+        <div className="card-ai">
             <div className="flex items-center gap-2 mb-5">
                 <Sparkles className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-lg font-semibold text-white">AI Detected Patterns</h3>
-                <span className="ai-badge">AI-Powered</span>
+                <h3 className="text-lg font-semibold text-slate-900">AI Detected Patterns</h3>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200">AI-Powered</span>
             </div>
             <div className="space-y-3">
                 {patterns.slice(0, 4).map((pattern) => {
@@ -63,7 +63,7 @@ const AIPatternCard = ({ patterns = [] }) => {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-white/90 leading-relaxed">
+                                    <p className="text-sm text-slate-700 leading-relaxed">
                                         {pattern.description}
                                     </p>
                                 </div>

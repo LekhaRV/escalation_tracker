@@ -23,11 +23,11 @@ const AIRecommendationsPanel = ({ insights = [] }) => {
     // const [expandedId, setExpandedId] = useState(null); // Removed expansion state
     if (!insights || insights.length === 0) {
         return (
-            <div className="card-highlight">
+            <div className="card-ai">
                 <div className="flex items-center gap-2 mb-4">
-                    <Lightbulb className="w-5 h-5 text-emerald-400" />
-                    <h3 className="text-lg font-semibold text-white">AI Insights</h3>
-                    <span className="ai-badge">AI-Powered</span>
+                    <Lightbulb className="w-5 h-5 text-emerald-600" />
+                    <h3 className="text-lg font-semibold text-slate-900">AI Insights</h3>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200">AI-Powered</span>
                 </div>
                 <div className="text-center py-8 text-slate-400">
                     <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-50" />
@@ -42,17 +42,17 @@ const AIRecommendationsPanel = ({ insights = [] }) => {
     const uniqueInsights = [...new Map(insights.map(item => [item.title, item])).values()];
 
     return (
-        <div className="card-highlight">
+        <div className="card-ai">
             <div className="flex items-center gap-2 mb-5">
-                <Lightbulb className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-lg font-semibold text-white">AI Insights</h3>
-                <span className="ai-badge">AI-Powered</span>
+                <Lightbulb className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-lg font-semibold text-slate-900">AI Insights</h3>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200">AI-Powered</span>
             </div>
             <div className="space-y-3">
                 {uniqueInsights.slice(0, 4).map((insight) => {
                     const Icon = insightIcons[insight.type] || Lightbulb;
                     const colorClass = insightColors[insight.type] || insightColors.RECOMMENDATION;
-                    const textColor = insightTextColors[insight.type] || 'text-emerald-400';
+                    const textColor = insightTextColors[insight.type] || 'text-emerald-700';
                     // const isExpanded = expandedId === insight.insight_id; 
 
                     return (
@@ -72,7 +72,7 @@ const AIRecommendationsPanel = ({ insights = [] }) => {
                                         </h4>
                                         {/* <ArrowRight className={`w-4 h-4 text-slate-500 group-hover:text-white transition-all transform ${isExpanded ? 'rotate-90' : 'group-hover:translate-x-1'}`} /> */}
                                     </div>
-                                    <p className={`text-xs text-slate-400 leading-relaxed`}>
+                                    <p className={`text-xs text-slate-600 leading-relaxed`}>
                                         {insight.description}
                                     </p>
                                 </div>

@@ -295,4 +295,15 @@ Do not include numbering or markdown formatting outside the array."""
         except:
             return ["Review internal knowledge base"]
 
+    async def summarize_complaint(self, subject: str, description: str) -> Optional[str]:
+        """
+        Generate a concise 1-2 line executive summary of the complaint.
+        """
+        prompt = f"""Summarize this complaint in 1-2 concise sentences for an executive dashboard. Focus on the core issue and impact. Do not include introductory phrases like "Here is a summary".
+
+Subject: {subject}
+Description: {description}"""
+
+        return await self._generate_content(prompt, temperature=0.3)
+
 gemini_service = GeminiService()
