@@ -164,6 +164,7 @@ class ComplaintService:
             customer_phone=data.customer_phone,
             subject=data.subject,
             description=data.description,
+            ai_summary=data.ai_summary,
             status=ComplaintStatus.NEW
         )
         

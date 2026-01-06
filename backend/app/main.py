@@ -4,6 +4,7 @@ Main FastAPI Application with Comprehensive OpenAPI Documentation
 """
 
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -175,7 +176,16 @@ async def add_timing_header(request: Request, call_next):
     return response
 
 
-# Global exception handler
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error(f"Validation error: {exc.errors()}")
+    logger.error(f"Body: {exc.body if hasattr(exc, 'body') else 'N/A'}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body) if hasattr(exc, 'body') else None},
+    )
+
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):
     return JSONResponse(

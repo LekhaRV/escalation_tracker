@@ -44,6 +44,7 @@ class Complaint(Base, TimestampMixin):
     # Complaint content
     subject = Column(String(500), nullable=False)
     description = Column(Text)
+    ai_summary = Column(Text, nullable=True)  # AI-generated executive summary
     raw_email_content = Column(Text)  # Original email content
     
     # Status
