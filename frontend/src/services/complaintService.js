@@ -45,8 +45,13 @@ export const complaintService = {
         return response.data;
     },
 
-    async getResolutionRecommendations(complaintId) {
-        const response = await api.post(`/complaints/${complaintId}/recommend-resolution`);
+    async getResolutionRecommendations(id) {
+        const response = await api.post(`/complaints/${id}/recommend-resolution`);
+        return response.data;
+    },
+
+    async addComment(id, content) {
+        const response = await api.post(`/complaints/${id}/comments`, { content });
         return response.data;
     }
 };

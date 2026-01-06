@@ -50,7 +50,7 @@ class ProjectBase(BaseModel):
     status: ProjectStatus = ProjectStatus.PLANNING
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    department_id: UUID
+    department_id: Optional[UUID] = None  # Optional - projects are cross-functional
 
 
 # Request schemas
@@ -58,7 +58,7 @@ class ProjectCreate(ProjectBase):
     """Schema for creating a project"""
     project_manager_id: Optional[UUID] = None
     team_lead_id: Optional[UUID] = None
-    department_id: UUID
+    department_id: Optional[UUID] = None  # Optional - projects are cross-functional
 
 
 class ProjectUpdate(BaseModel):
@@ -81,7 +81,7 @@ class ProjectBriefResponse(BaseModel):
     project_id: UUID
     org_id: UUID
     project_name: str
-    department_id: UUID
+    department_id: Optional[UUID] = None
     department_name: Optional[str] = None
     project_code: Optional[str] = None
     client_name: Optional[str] = None
@@ -103,7 +103,7 @@ class ProjectDetailResponse(BaseModel):
     project_id: UUID
     org_id: UUID
     project_name: str
-    department_id: UUID
+    department_id: Optional[UUID] = None
     department_name: Optional[str] = None
     project_code: Optional[str] = None
     client_name: Optional[str] = None

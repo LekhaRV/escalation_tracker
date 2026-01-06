@@ -82,6 +82,12 @@ class Complaint(Base, TimestampMixin):
         back_populates="complaint",
         cascade="all, delete-orphan"
     )
+    comments = relationship(
+        "ComplaintComment",
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        order_by="ComplaintComment.created_at.desc()"
+    )
     
     # Indexes
     __table_args__ = (

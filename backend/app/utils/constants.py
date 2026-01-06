@@ -8,84 +8,84 @@ from typing import Dict, List
 
 # User Roles
 class UserRole(str, Enum):
-    ADMIN = "admin"
-    MANAGER = "manager"
-    AGENT = "agent"
-    VIEWER = "viewer"
+    ADMIN = "ADMIN"
+    MANAGER = "MANAGER"
+    AGENT = "AGENT"
+    VIEWER = "VIEWER"
 
 
 # Organization Status
 class OrgStatus(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    SUSPENDED = "SUSPENDED"
 
 
 # User Status
 class UserStatus(str, Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
 
 
 # Project Status
 class ProjectStatus(str, Enum):
-    PLANNING = "planning"
-    ACTIVE = "active"
-    ON_HOLD = "on_hold"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    PLANNING = "PLANNING"
+    ACTIVE = "ACTIVE"
+    ON_HOLD = "ON_HOLD"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
 # Complaint Status
 class ComplaintStatus(str, Enum):
-    NEW = "new"
-    CATEGORIZED = "categorized"
-    IN_PROGRESS = "in_progress"
-    RESOLVED = "resolved"
-    CLOSED = "closed"
+    NEW = "NEW"
+    CATEGORIZED = "CATEGORIZED"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
 
 
 # Severity Levels
 class SeverityLevel(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
 # Pattern Types
 class PatternType(str, Enum):
-    RECURRING = "recurring"
-    TRENDING = "trending"
-    SYSTEMIC = "systemic"
+    RECURRING = "RECURRING"
+    TRENDING = "TRENDING"
+    SYSTEMIC = "SYSTEMIC"
 
 
 # Pattern Status
 class PatternStatus(str, Enum):
-    ACTIVE = "active"
-    RESOLVED = "resolved"
-    MONITORING = "monitoring"
+    ACTIVE = "ACTIVE"
+    RESOLVED = "RESOLVED"
+    MONITORING = "MONITORING"
 
 
 # Insight Types
 class InsightType(str, Enum):
-    TREND = "trend"
-    RECOMMENDATION = "recommendation"
-    ALERT = "alert"
+    TREND = "TREND"
+    RECOMMENDATION = "RECOMMENDATION"
+    ALERT = "ALERT"
 
 
 # Impact Levels
 class ImpactLevel(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
 
 # Agent Log Status
 class AgentLogStatus(str, Enum):
-    SUCCESS = "success"
-    FAILURE = "failure"
-    RETRY = "retry"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    RETRY = "RETRY"
 
 
 # Tarento-Specific Categories
@@ -155,28 +155,45 @@ SUB_CATEGORIES: Dict[str, List[str]] = {
 
 
 # Category to Department Mapping
-# Maps AI-detected category types to specific departments
+# Maps AI-detected category types to Tarento departments
 CATEGORY_DEPARTMENT_MAP: Dict[str, str] = {
-    "project_delivery": "Project Management",
+    # Primary categories
+    "project_delivery": "Delivery",
     "technical": "Engineering",
-    "communication": "Account Management",
-    "resource": "Resource Management",
+    "communication": "Client Success",
+    "resource": "HR",
     "billing": "Finance",
     "quality": "Quality Assurance",
-    "support": "Support",
-    "engagement": "Account Management",
-    # Additional aliases for flexible AI responses
-    "infrastructure": "Engineering",
+    "support": "Client Success",
+    "engagement": "Client Success",
+    # Technical sub-categories
+    "infrastructure": "DevOps",
     "api": "Engineering",
     "bug": "Engineering",
     "performance": "Engineering",
-    "security": "Engineering",
+    "security": "DevOps",
+    "deployment": "DevOps",
+    "cloud": "DevOps",
+    # Delivery sub-categories
+    "delay": "Delivery",
+    "timeline": "Delivery",
+    "milestone": "Delivery",
+    "scope": "Delivery",
+    # Finance sub-categories
     "invoice": "Finance",
     "payment": "Finance",
-    "delay": "Project Management",
-    "timeline": "Project Management",
+    # Quality sub-categories
     "testing": "Quality Assurance",
     "qa": "Quality Assurance",
+    # Design categories
+    "design": "Design",
+    "ux": "Design",
+    "ui": "Design",
+    # Data categories
+    "data": "Data & AI",
+    "analytics": "Data & AI",
+    "ml": "Data & AI",
+    "ai": "Data & AI",
 }
 
 

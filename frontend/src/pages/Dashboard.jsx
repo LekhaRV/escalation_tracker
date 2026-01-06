@@ -1,312 +1,288 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
-} from 'recharts';
-import {
-    AlertCircle, CheckCircle, Clock, Activity,
-    TrendingUp, ArrowUpRight, ArrowDownRight, Sparkles, Brain
+    AlertTriangle, ArrowRight, Clock, Users,
+    RefreshCw, CheckCircle, Brain, Shield,
+    Activity, Inbox, Target, Zap, ExternalLink
 } from 'lucide-react';
 import { analyticsService } from '../services/analyticsService';
 import { useAuth } from '../context/AuthContext';
-import AIAnalystWidget from '../components/dashboard/AIAnalystWidget';
-import AIPatternCard from '../components/dashboard/AIPatternCard';
-import AIRecommendationsPanel from '../components/dashboard/AIRecommendationsPanel';
+import ActionablePatterns from '../components/dashboard/ActionablePatterns';
+
+const AUTO_REFRESH_INTERVAL = 30000;
 
 function Dashboard() {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const { user } = useAuth();
+    const [stats, setStats] = useState(null);
+    const [escalations, setEscalations] = useState([]);
+    const [workload, setWorkload] = useState([]);
+    const [patterns, setPatterns] = useState([]);
+    const [aiInsights, setAiInsights] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState(new Date());
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
-
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async (isRefresh = false) => {
         try {
-            const data = await analyticsService.getAnalytics('dashboard');
-            setStats(data.data);
+            if (isRefresh) setRefreshing(true);
+            const [dashData, escalationData, workloadData, patternsData, aiInsightsData] = await Promise.all([
+                analyticsService.getAnalytics('dashboard'),
+                analyticsService.getEscalations().catch(() => ({ escalations: [] })),
+                analyticsService.getWorkload().catch(() => ({ workload: [] })),
+                analyticsService.getPatterns().catch(() => ({ data: { patterns: [] } })),
+                analyticsService.getInsights().catch(() => ({ data: { insights: [] } }))
+            ]);
+            setStats(dashData.data);
+            setEscalations(escalationData.escalations || []);
+            setWorkload(workloadData.workload || []);
+            setPatterns(patternsData.data?.patterns || []);
+            setAiInsights(aiInsightsData.data?.insights || []);
+            setLastUpdated(new Date());
         } catch (error) {
-            console.error('Failed to fetch dashboard stats', error);
+            console.error('Failed to fetch dashboard', error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    };
+    }, []);
+
+    useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+    useEffect(() => {
+        const interval = setInterval(() => fetchDashboardData(true), AUTO_REFRESH_INTERVAL);
+        return () => clearInterval(interval);
+    }, [fetchDashboardData]);
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="flex items-center gap-3 text-slate-400">
-                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    <span>Loading dashboard...</span>
+            <div className="flex items-center justify-center h-[60vh]">
+                <div className="text-center">
+                    <div className="w-10 h-10 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-slate-500 font-medium">Loading...</p>
                 </div>
             </div>
         );
     }
 
-    if (!stats) return <div className="text-slate-400">Failed to load data</div>;
-
-    const severityData = [
-        { name: 'Critical', value: stats.critical_count || 0, color: '#ef4444' },
-        { name: 'High', value: stats.high_count || 0, color: '#f97316' },
-        { name: 'Medium', value: stats.medium_count || 0, color: '#eab308' },
-        { name: 'Low', value: stats.low_count || 0, color: '#10b981' },
-    ];
-
-    const trendData = stats.daily_trends || [];
+    if (!stats) return <div className="text-slate-600 p-8">Failed to load data</div>;
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Executive Summary Header */}
-            <div className="card-highlight">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Brain className="w-5 h-5 text-indigo-400" />
-                            <span className="ai-badge">AI Dashboard</span>
-                        </div>
-                        <h1 className="text-2xl font-bold text-white mb-1">
-                            Good {getTimeOfDay()}, {user?.name?.split(' ')[0]}
-                        </h1>
-                        <p className="text-slate-400 text-sm max-w-xl">
-                            {getExecutiveSummary(stats)}
-                        </p>
+        <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Command Center</h1>
+                    <p className="text-slate-500 text-sm">Real-time monitoring & AI insights</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-emerald-700 text-xs font-semibold">LIVE</span>
                     </div>
-                    <div className="text-right hidden lg:block">
-                        <div className="text-3xl font-bold text-white">{stats.sla_compliance_rate}%</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wide">SLA Compliance</div>
-                    </div>
+                    <span className="text-xs text-slate-400">{formatTimeAgo(lastUpdated)}</span>
+                    <button
+                        onClick={() => fetchDashboardData(true)}
+                        disabled={refreshing}
+                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    </button>
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                    title="Total Complaints"
-                    value={stats.total_complaints}
-                    icon={Activity}
-                    subtitle={`${stats.complaints_today} today`}
-                    color="indigo"
-                />
-                <StatCard
-                    title="In Progress"
-                    value={stats.in_progress_complaints}
-                    icon={Clock}
-                    subtitle="Active cases"
-                    color="purple"
-                />
-                <StatCard
-                    title="Critical Issues"
-                    value={stats.critical_count}
-                    icon={AlertCircle}
-                    subtitle={stats.critical_count > 0 ? "Needs attention" : "All clear"}
-                    color="red"
-                    alert={stats.critical_count > 0}
-                />
-                <StatCard
-                    title="Resolved"
-                    value={stats.resolved_complaints}
-                    icon={CheckCircle}
-                    subtitle={`${stats.resolution_rate}% rate`}
-                    color="emerald"
-                />
+            {/* Stats Row */}
+            <div className="grid grid-cols-5 gap-4">
+                <StatCard label="New" value={stats.new_complaints} icon={Inbox} color="blue" onClick={() => navigate('/complaints?status=NEW')} />
+                <StatCard label="In Progress" value={stats.in_progress_complaints} icon={Activity} color="violet" onClick={() => navigate('/complaints?status=IN_PROGRESS')} />
+                <StatCard label="Resolved" value={stats.resolved_complaints} icon={CheckCircle} color="emerald" onClick={() => navigate('/complaints?status=RESOLVED')} />
+                <StatCard label="Critical" value={stats.critical_count} icon={AlertTriangle} color="red" pulse={stats.critical_count > 0} onClick={() => navigate('/complaints?priority=CRITICAL')} />
+                <StatCard label="SLA Compliance" value={`${stats.sla_compliance_rate}%`} icon={Target} color={stats.sla_compliance_rate >= 90 ? 'emerald' : 'amber'} />
             </div>
 
-            {/* AI Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AIPatternCard patterns={stats.recent_patterns} />
-                <AIRecommendationsPanel insights={stats.recent_insights} />
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Trend Chart */}
-                <div className="card lg:col-span-2">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-indigo-400" />
-                            <h2 className="text-lg font-semibold text-white">Complaint Trends</h2>
-                        </div>
-                        <span className="text-xs text-slate-500">Last 7 days</span>
-                    </div>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorComplaints" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff08" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#64748b', fontSize: 12 }}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#1e293b',
-                                        border: '1px solid #334155',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-                                    }}
-                                    cursor={{ stroke: '#ffffff10' }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="complaints"
-                                    stroke="#6366f1"
-                                    strokeWidth={2}
-                                    fillOpacity={1}
-                                    fill="url(#colorComplaints)"
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Severity Distribution */}
-                <div className="card">
-                    <h2 className="text-lg font-semibold text-white mb-6">By Severity</h2>
-                    <div className="h-48 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={severityData}
-                                    innerRadius={50}
-                                    outerRadius={70}
-                                    paddingAngle={4}
-                                    dataKey="value"
-                                >
-                                    {severityData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#1e293b',
-                                        borderColor: '#334155',
-                                        borderRadius: '8px'
-                                    }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-2xl font-bold text-white">{stats.total_complaints}</span>
-                            <span className="text-xs text-slate-400">Total</span>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {severityData.map((item) => (
-                            <div key={item.name} className="flex items-center gap-2 text-sm text-slate-400">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span>{item.name}</span>
-                                <span className="ml-auto text-white font-medium">{item.value}</span>
+            {/* Main 3-Column Grid */}
+            <div className="grid grid-cols-12 gap-5">
+                {/* Escalations - 5 cols */}
+                <div className="col-span-5">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-soft h-full">
+                        <div className="px-5 py-4 border-b border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
+                                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                                    </div>
+                                    <h2 className="font-semibold text-slate-800">Escalations</h2>
+                                </div>
+                                {escalations.length > 0 && (
+                                    <span className="px-2.5 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-full">{escalations.length}</span>
+                                )}
                             </div>
-                        ))}
+                        </div>
+                        <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+                            {escalations.length > 0 ? escalations.map((esc, idx) => {
+                                const totalIssues = (esc.critical_high_count || 0) + (esc.overdue_count || 0);
+                                const healthScore = Math.max(0, 100 - (totalIssues * 10));
+                                return (
+                                    <div
+                                        key={idx}
+                                        onClick={() => navigate(`/complaints?project_id=${esc.project_id}`)}
+                                        className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 cursor-pointer group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center text-brand-700 font-bold">
+                                            {esc.project_name?.charAt(0) || 'P'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-slate-800 group-hover:text-brand-700 truncate">{esc.project_name}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${healthScore > 80 ? 'bg-emerald-500' : healthScore > 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                        style={{ width: `${healthScore}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-slate-400">{healthScore}%</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            {esc.critical_high_count > 0 && (
+                                                <span className="px-2 py-1 bg-red-50 text-red-600 text-xs font-medium rounded">{esc.critical_high_count}</span>
+                                            )}
+                                            {esc.overdue_count > 0 && (
+                                                <span className="px-2 py-1 bg-amber-50 text-amber-600 text-xs font-medium rounded">{esc.overdue_count}</span>
+                                            )}
+                                        </div>
+                                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
+                                    </div>
+                                );
+                            }) : (
+                                <div className="py-12 text-center">
+                                    <Shield className="w-10 h-10 mx-auto mb-2 text-emerald-200" />
+                                    <p className="text-slate-500 font-medium">All Healthy</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* AI Patterns - 4 cols */}
+                <div className="col-span-4">
+                    <ActionablePatterns patterns={patterns} />
+                </div>
+
+                {/* AI Insights - 3 cols */}
+                <div className="col-span-3">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-soft h-full">
+                        <div className="px-5 py-4 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                                    <Brain className="w-4 h-4 text-purple-600" />
+                                </div>
+                                <h2 className="font-semibold text-slate-800">AI Insights</h2>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+                            {aiInsights.length > 0 ? aiInsights.map((insight, idx) => (
+                                <div key={idx} className="px-5 py-3 hover:bg-slate-50">
+                                    <div className="flex items-start gap-2">
+                                        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${insight.type === 'alert' ? 'bg-red-500' :
+                                                insight.type === 'trend' ? 'bg-amber-500' : 'bg-purple-500'
+                                            }`} />
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-700">{insight.title}</p>
+                                            <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{insight.description}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="py-12 text-center">
+                                    <Brain className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                                    <p className="text-sm text-slate-400">No insights</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <QuickStatCard
-                    label="Today's Volume"
-                    value={stats.complaints_today}
-                    change={stats.complaints_today > 0 ? '+' + stats.complaints_today : '0'}
-                />
-                <QuickStatCard
-                    label="This Week"
-                    value={stats.complaints_this_week}
-                    change="7 days"
-                />
-                <QuickStatCard
-                    label="Overdue"
-                    value={stats.overdue_complaints}
-                    change={stats.overdue_complaints > 0 ? 'Action needed' : 'On track'}
-                    alert={stats.overdue_complaints > 0}
-                />
-            </div>
-
-            {/* AI Analyst Widget */}
-            <AIAnalystWidget />
-        </div>
-    );
-}
-
-function getTimeOfDay() {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    return 'evening';
-}
-
-function getExecutiveSummary(stats) {
-    const issues = [];
-    if (stats.critical_count > 0) {
-        issues.push(`${stats.critical_count} critical issue${stats.critical_count > 1 ? 's' : ''} requiring attention`);
-    }
-    if (stats.overdue_complaints > 0) {
-        issues.push(`${stats.overdue_complaints} overdue complaint${stats.overdue_complaints > 1 ? 's' : ''}`);
-    }
-    if (stats.sla_compliance_rate < 90) {
-        issues.push('SLA compliance below target');
-    }
-
-    if (issues.length === 0) {
-        return `Your team is performing well with ${stats.resolution_rate}% resolution rate. ${stats.in_progress_complaints} cases are being actively handled.`;
-    }
-    return `You have ${issues.join(', ')}. ${stats.in_progress_complaints} cases are in progress.`;
-}
-
-function StatCard({ title, value, icon: Icon, subtitle, color, alert }) {
-    const colors = {
-        indigo: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
-        purple: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-        red: 'bg-red-500/15 text-red-400 border-red-500/20',
-        emerald: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-    };
-
-    return (
-        <div className={`card p-5 ${alert ? 'border-red-500/30' : ''} group hover:-translate-y-0.5 transition-all`}>
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-2.5 rounded-xl border ${colors[color]}`}>
-                    <Icon className="w-5 h-5" />
+            {/* Team Workload */}
+            {workload.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-soft">
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <h2 className="font-semibold text-slate-800">Team Workload</h2>
+                        </div>
+                        <button onClick={() => navigate('/users')} className="text-xs font-medium text-brand-600 hover:text-brand-700">
+                            Manage Team →
+                        </button>
+                    </div>
+                    <div className="p-5 grid grid-cols-6 gap-4">
+                        {workload.slice(0, 6).map((agent, idx) => {
+                            const capacity = agent.capacity || 10;
+                            const current = agent.current_workload || 0;
+                            const percentage = Math.round((current / capacity) * 100);
+                            const isOverloaded = percentage > 80;
+                            return (
+                                <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${isOverloaded ? 'bg-red-500' : 'bg-brand-600'}`}>
+                                            {agent.name?.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-slate-700 truncate">{agent.name}</p>
+                                            <p className="text-xs text-slate-400">{current}/{capacity}</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${isOverloaded ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-                {alert && (
-                    <span className="flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                )}
-            </div>
-            <h3 className="text-3xl font-bold text-white mb-1">{value}</h3>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{title}</p>
-            <p className="text-xs text-slate-400 mt-1">{subtitle}</p>
+            )}
         </div>
     );
 }
 
-function QuickStatCard({ label, value, change, alert }) {
+// Professional Stat Card
+function StatCard({ label, value, icon: Icon, color, pulse, onClick }) {
+    const colorMap = {
+        blue: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'text-blue-600' },
+        violet: { bg: 'bg-violet-100', text: 'text-violet-600', icon: 'text-violet-600' },
+        emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: 'text-emerald-600' },
+        amber: { bg: 'bg-amber-100', text: 'text-amber-600', icon: 'text-amber-600' },
+        red: { bg: 'bg-red-100', text: 'text-red-600', icon: 'text-red-600' },
+    };
+    const c = colorMap[color] || colorMap.blue;
+
     return (
-        <div className={`card p-4 flex justify-between items-center ${alert ? 'border-amber-500/30' : ''}`}>
-            <div>
-                <span className="text-slate-400 text-sm">{label}</span>
-                <div className={`text-2xl font-bold ${alert ? 'text-amber-400' : 'text-white'}`}>{value}</div>
+        <div
+            onClick={onClick}
+            className={`bg-white rounded-xl border border-slate-200 p-4 cursor-pointer hover:shadow-medium hover:border-slate-300 transition-all ${pulse ? 'ring-2 ring-red-100' : ''}`}
+        >
+            <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${c.icon}`} />
+                </div>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-full ${alert ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
-                {change}
-            </span>
+            <p className="text-2xl font-bold text-slate-800">{value}</p>
+            <p className="text-sm text-slate-500">{label}</p>
         </div>
     );
+}
+
+function formatTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 120) return '1m ago';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    return `${Math.floor(seconds / 3600)}h ago`;
 }
 
 export default Dashboard;

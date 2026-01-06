@@ -2,7 +2,7 @@
 Tarento AI Complaint Tracking System - Agents API Endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
@@ -12,6 +12,14 @@ from app.models import User, AgentLog
 from app.schemas import AllAgentsResponse, AgentStatusResponse
 from app.api.deps import get_current_user, require_admin_or_manager
 from app.utils.constants import AgentLogStatus
+from app.core.scheduler import (
+    run_email_parser_job,
+    run_categorization_agent_job,
+    run_mapping_agent_job,
+    run_escalation_agent_job,
+    run_pattern_agent_job,
+    run_insight_agent_job
+)
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -106,7 +114,8 @@ async def get_agents_status(
 async def run_agent(
     agent_name: str,
     current_user: User = Depends(require_admin_or_manager),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    background_tasks: BackgroundTasks = None
 ):
     """Manually trigger an agent"""
     if agent_name not in AGENT_NAMES:
@@ -125,6 +134,19 @@ async def run_agent(
     )
     db.add(log)
     await db.commit()
+    
+    # Map agent name to job function
+    jobs = {
+        "email_parser": run_email_parser_job,
+        "categorization": run_categorization_agent_job,
+        "mapping": run_mapping_agent_job,
+        "escalation": run_escalation_agent_job,
+        "pattern": run_pattern_agent_job,
+        "insight": run_insight_agent_job
+    }
+    
+    if agent_name in jobs:
+        background_tasks.add_task(jobs[agent_name])
     
     return {
         "success": True,

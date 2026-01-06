@@ -201,7 +201,7 @@ IMPORTANT:
             return []
             
         # Summary for prompt
-        summaries = [f"- {c.get('category')}: {c.get('subject')}" for c in complaints_data[:30]]
+        summaries = [f"- [ID: {c.get('id')}] {c.get('category')}: {c.get('subject')}" for c in complaints_data[:30]]
         
         prompt = f"""Analyze these complaints for recurring patterns:
 {chr(10).join(summaries)}
@@ -213,6 +213,7 @@ Identify patterns and return a JSON array:
         "description": "description",
         "frequency": number,
         "severity_score": 0.1-1.0,
+        "affected_ids": ["id1", "id2"],
         "affected_categories": ["cat1"],
         "recommendation": "action"
     }}
@@ -294,5 +295,96 @@ Do not include numbering or markdown formatting outside the array."""
             return ["Review provided details", "Contact customer for more info"]
         except:
             return ["Review internal knowledge base"]
+
+    async def select_best_agent(
+        self,
+        complaint_summary: str,
+        category: str,
+        candidates: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Use AI to select the best agent from a list of candidates
+        """
+        candidates_json = json.dumps(candidates, indent=2)
+        
+        prompt = f"""You are an expert Resource Manager AI. Select the best team member to handle this complaint.
+
+Complaint: "{complaint_summary}"
+Category: {category}
+
+Candidates:
+{candidates_json}
+
+Assignment Rules:
+1. Match SKILLS/SPECIALIZATION with the complaint topic.
+2. Consider ROLE (Leads for complex/critical, Developers for technical, etc).
+3. Consider WORKLOAD (Lower current_workload is better, don't overload).
+4. If skills are equal, pick the one with lower workload.
+
+Return a JSON object with your decision:
+{{
+    "selected_user_id": "uuid-string",
+    "reasoning": "Clear explanation of why this person was chosen over others",
+    "confidence_score": 0.0-1.0
+}}"""
+
+        response_text = await self._generate_content(prompt, temperature=0.2)
+        
+        if not response_text:
+            return None
+            
+        try:
+            return json.loads(self._clean_json(response_text))
+        except:
+            return None
+
+    async def match_project(
+        self,
+        subject: str,
+        content: str,
+        projects: List[Dict[str, Any]]
+    ) -> Optional[str]:
+        """
+        Use AI to semantically match an email to a project
+        """
+        # Create a condensed list of projects for the prompt
+        project_list = []
+        for p in projects:
+            project_list.append(f"- ID: {p['project_id']}, Name: {p['project_name']}, Client: {p['client_name']}, Code: {p['project_code']}")
+        
+        projects_text = "\n".join(project_list)
+        
+        prompt = f"""You are a Project Routing Assistant. Identify which project this email belongs to.
+
+Email Subject: "{subject}"
+Email Content: "{content[:500]}" (truncated)
+
+Available Projects:
+{projects_text}
+
+Task:
+Match the email to the correct Project ID based on Client Name, Project Name, or context clues.
+If the email mentions a company/code that fuzzy matches a project, select it.
+If absolutely no match is found, return null.
+
+Return ONLY a JSON object:
+{{
+    "project_id": "uuid-string-of-match-or-null",
+    "confidence": 0.0-1.0,
+    "reason": "why you matched"
+}}"""
+
+        response_text = await self._generate_content(prompt, temperature=0.1)
+        
+        if not response_text:
+            return None
+            
+        try:
+            result = json.loads(self._clean_json(response_text))
+            if result.get("project_id") and result.get("confidence", 0) > 0.6:
+                return result["project_id"]
+            return None
+        except:
+            return None
 
 gemini_service = GeminiService()

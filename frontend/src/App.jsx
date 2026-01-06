@@ -6,13 +6,14 @@ import Complaints from './pages/Complaints';
 import ComplaintDetail from './pages/ComplaintDetail';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
+import Departments from './pages/Departments';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
 import UserDetail from './pages/UserDetail';
 import Layout from './components/common/Layout';
 
 // Protected Route wrapper
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, roles = [] }) {
     const { user, loading } = useAuth();
 
     if (loading) {
@@ -25,6 +26,10 @@ function ProtectedRoute({ children }) {
 
     if (!user) {
         return <Navigate to="/login" replace />;
+    }
+
+    if (roles.length > 0 && !roles.includes(user.role)) {
+        return <Navigate to="/" replace />;
     }
 
     return children;
@@ -47,10 +52,23 @@ function App() {
                         <Route path="complaints/:id" element={<ComplaintDetail />} />
                         <Route path="projects" element={<Projects />} />
                         <Route path="projects/:id" element={<ProjectDetail />} />
+                        <Route path="departments" element={<Departments />} />
 
-                        <Route path="settings" element={<Settings />} />
-                        <Route path="users" element={<Users />} />
-                        <Route path="users/:id" element={<UserDetail />} />
+                        <Route path="settings" element={
+                            <ProtectedRoute roles={['ADMIN']}>
+                                <Settings />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="users" element={
+                            <ProtectedRoute roles={['ADMIN']}>
+                                <Users />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="users/:id" element={
+                            <ProtectedRoute roles={['ADMIN']}>
+                                <UserDetail />
+                            </ProtectedRoute>
+                        } />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -107,6 +107,12 @@ class AuthService:
     
     async def refresh_token(self, refresh_token: str) -> TokenResponse:
         """Refresh access token"""
+        from app.core.redis import redis_client
+        
+        # Check if token is blacklisted
+        if await redis_client.is_token_blacklisted(refresh_token):
+            raise AuthenticationError("Token has been revoked")
+        
         payload = decode_token(refresh_token)
         
         if not payload:
@@ -129,6 +135,9 @@ class AuthService:
         
         if not user or user.status != UserStatus.ACTIVE:
             raise AuthenticationError("User not found or inactive")
+        
+        # Blacklist the old refresh token
+        await redis_client.blacklist_token(refresh_token)
         
         # Generate new tokens
         tokens = create_tokens(user.user_id, user.org_id)

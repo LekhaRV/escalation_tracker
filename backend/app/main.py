@@ -14,6 +14,8 @@ from app.database import init_db, close_db
 from app.api.v1 import api_router
 from app.core.logging import logger
 from app.core.exceptions import AppError
+from app.core.rate_limiter import limiter, rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 
 # OpenAPI documentation
@@ -148,6 +150,10 @@ app = FastAPI(
         {"name": "System", "description": "Health checks and system info"}
     ]
 )
+
+# Add rate limiter state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # CORS middleware
 app.add_middleware(

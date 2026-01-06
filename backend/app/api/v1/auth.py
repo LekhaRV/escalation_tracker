@@ -2,7 +2,7 @@
 Tarento AI Complaint Tracking System - Auth API Endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -14,6 +14,7 @@ from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 from app.models import User
 from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError
+from app.core.rate_limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

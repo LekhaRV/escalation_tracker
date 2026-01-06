@@ -29,7 +29,9 @@ from app.schemas.complaint import (
     ComplaintListResponse,
     ComplaintListResponse,
     ComplaintBulkResponse,
-    AssignableUserResponse
+    AssignableUserResponse,
+    ComplaintCommentResponse,
+    ComplaintCommentCreate
 )
 
 from app.schemas.project import (
@@ -85,9 +87,11 @@ __all__ = [
     "ComplaintListResponse",
     "ComplaintListResponse",
     "ComplaintListResponse",
+    "ComplaintListResponse",
     "ComplaintBulkResponse",
     "AssignableUserResponse",
-    "AssignableUserResponse",
+    "ComplaintCommentResponse",
+    "ComplaintCommentCreate",
     # Project
     "TeamMemberResponse",
     "TeamMemberManage",

@@ -141,9 +141,30 @@ class ComplaintBriefResponse(BaseModel):
         from_attributes = True
 
 
+# Comment schemas
+class ComplaintCommentResponse(BaseModel):
+    """Comment response schema"""
+    comment_id: UUID
+    complaint_id: UUID
+    user_id: Optional[UUID] = None
+    user_name: Optional[str] = None
+    content: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class ComplaintCommentCreate(BaseModel):
+    """Schema for creating a comment"""
+    content: str = Field(..., min_length=1)
+
+
 class ComplaintDetailResponse(BaseModel):
     """Detailed complaint response"""
     complaint_id: UUID
+
     org_id: UUID
     project_id: Optional[UUID] = None
     project_name: Optional[str] = None
@@ -164,6 +185,7 @@ class ComplaintDetailResponse(BaseModel):
     category: Optional[ComplaintCategoryResponse] = None
     assignment: Optional[ComplaintAssignmentResponse] = None
     escalations: List[ComplaintEscalationResponse] = []
+    comments: List[ComplaintCommentResponse] = []
     
     # Timeline (combined history)
     timeline: List[Dict[str, Any]] = []

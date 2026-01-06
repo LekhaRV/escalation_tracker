@@ -7,33 +7,43 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Professional Enterprise Palette
-                primary: {
-                    50: '#eef2ff',
-                    100: '#e0e7ff',
-                    200: '#c7d2fe',
-                    300: '#a5b4fc',
-                    400: '#818cf8',
-                    500: '#6366f1',  // Main indigo
-                    600: '#4f46e5',
-                    700: '#4338ca',
-                    800: '#3730a3',
-                    900: '#312e81',
-                    950: '#1e1b4b',
+                // Professional Brand Palette - Deeper, more sophisticated
+                brand: {
+                    50: '#f0f4f8',
+                    100: '#d9e2ec',
+                    200: '#bcccdc',
+                    300: '#9fb3c8',
+                    400: '#829ab1',
+                    500: '#627d98',
+                    600: '#486581',
+                    700: '#334e68', // Primary - Professional Navy
+                    800: '#243b53',
+                    900: '#102a43',
+                    950: '#0a1929',
                 },
+                // Professional Status Colors - Refined, not neon
+                status: {
+                    success: '#059669', // Emerald-600
+                    warning: '#d97706', // Amber-600
+                    danger: '#dc2626',  // Red-600
+                    info: '#2563eb',    // Blue-600
+                },
+                // Accent for highlights
                 accent: {
-                    50: '#ecfdf5',
-                    100: '#d1fae5',
-                    200: '#a7f3d0',
-                    300: '#6ee7b7',
-                    400: '#34d399',
-                    500: '#10b981',  // Emerald for success
-                    600: '#059669',
-                    700: '#047857',
-                    800: '#065f46',
-                    900: '#064e3b',
+                    DEFAULT: '#0ea5e9', // Sky-500 - Professional cyan
+                    hover: '#0284c7',
                 },
-                surface: {
+                // Surface colors
+                app: '#f8fafc',      // Slate-50
+                surface: '#ffffff',
+
+                // Text colors
+                logic: '#1e293b',    // Slate-800
+                algo: '#475569',     // Slate-600
+                muted: '#94a3b8',    // Slate-400
+
+                // Standard slate
+                slate: {
                     50: '#f8fafc',
                     100: '#f1f5f9',
                     200: '#e2e8f0',
@@ -51,8 +61,8 @@ export default {
                 sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
             },
             boxShadow: {
-                'glow': '0 0 20px -5px rgba(99, 102, 241, 0.3)',
-                'glow-lg': '0 0 40px -10px rgba(99, 102, 241, 0.4)',
+                'soft': '0 2px 8px -2px rgba(0, 0, 0, 0.08)',
+                'medium': '0 4px 12px -4px rgba(0, 0, 0, 0.12)',
             }
         },
     },

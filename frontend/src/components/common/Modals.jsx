@@ -475,7 +475,7 @@ export function AssignAgentModal({ isOpen, onClose, onAssign, currentAssignee, c
                                             )}
                                         </div>
                                         {agent.recommendation_reason && (
-                                            <div className="text-[10px] text-indigo-300 mt-1">
+                                            <div className="text-[10px] text-primary-300 mt-1">
                                                 {agent.recommendation_reason}
                                             </div>
                                         )}

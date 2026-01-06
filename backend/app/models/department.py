@@ -25,6 +25,7 @@ class Department(Base, TimestampMixin):
         nullable=False
     )
     name = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
     manager_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.user_id", ondelete="SET NULL"),

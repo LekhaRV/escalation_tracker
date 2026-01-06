@@ -101,11 +101,22 @@ class EmailService:
         domain = customer_email.split("@")[1].lower() if "@" in customer_email else ""
         subject_lower = subject.lower()
         
+        # 1. Project Code Match
         for project in projects:
             if project.get("project_code") and project["project_code"].lower() in subject_lower:
                 return project["project_id"]
-            if project.get("client_name") and domain:
-                if project["client_name"].lower().replace(" ", "") in domain:
+        
+        # 2. Domain Match (Robost)
+        if domain:
+            for project in projects:
+                client_name = project.get("client_name", "").lower()
+                clean_client = client_name.replace(" ", "")
+                # Match "globalbank" in "globalbank.com"
+                if clean_client and clean_client in domain:
+                    return project["project_id"]
+                # Match "global" in "globalbank.com" (first word fallback)
+                first_word = client_name.split(" ")[0]
+                if first_word and len(first_word) > 3 and first_word in domain:
                     return project["project_id"]
         
         return None
@@ -218,10 +229,22 @@ class EmailService:
             for p in db_projects
         ]
         
+        # Try Deterministic Match First (Fast)
         project_id = self.match_project_from_email(sender, subject, projects_data)
+        match_source = "Deterministic"
+
+        # Fallback to AI Match (Smart)
+        if not project_id:
+            logger.info("Deterministic project match failed. Trying AI matching...")
+            try:
+                project_id = await gemini_service.match_project(subject, content, projects_data)
+                if project_id:
+                    match_source = "AI Semantic Match"
+            except Exception as e:
+                logger.error(f"AI Project matching failed: {e}")
         
         if project_id:
-            logger.info(f"Simulated email matched to project {project_id}")
+            logger.info(f"Simulated email matched to project {project_id} (Source: {match_source})")
             complaint_in.project_id = project_id
             # Update the preliminary complaint with the project ID
             complaint.project_id = project_id

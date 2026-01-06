@@ -1,14 +1,12 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import Navbar from './Navbar';
 
 function Layout() {
     return (
-        <div className="min-h-screen bg-[#0f172a]">
+        <div className="min-h-screen bg-app">
             <Sidebar />
-            <Navbar />
-            <main className="pl-64 pt-16 min-h-screen">
-                <div className="p-8 max-w-7xl mx-auto">
+            <main className="pl-64 min-h-screen transition-all duration-300">
+                <div className="p-6 mx-auto w-full animate-fade-in">
                     <Outlet />
                 </div>
             </main>

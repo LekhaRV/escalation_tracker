@@ -64,6 +64,17 @@ class RedisClient:
         """Set expiration on key"""
         client = await self.connect()
         return await client.expire(key, seconds)
+    
+    async def blacklist_token(self, token: str, expire_seconds: int = 604800) -> bool:
+        """Add token to blacklist (default 7 days expiry)"""
+        key = f"blacklist:{token[:32]}"  # Use first 32 chars as key
+        return await self.set(key, "1", expire=expire_seconds)
+    
+    async def is_token_blacklisted(self, token: str) -> bool:
+        """Check if token is blacklisted"""
+        key = f"blacklist:{token[:32]}"
+        result = await self.get(key)
+        return result is not None
 
 
 # Global Redis client

@@ -1,45 +1,57 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
+from sqlalchemy import select, func
 
 from app.database import get_db
 from app.api.deps import get_current_user
-from app.services.department_service import DepartmentService
+from app.models import User, Department
 from app.schemas.department import DepartmentResponse, DepartmentCreate
-from app.models.user import User
 from app.core.exceptions import AppError
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
 
+
 @router.get(
-    "/",
+    "",
     response_model=List[DepartmentResponse],
     summary="List departments",
-    description="Get all departments in the organization"
+    description="Get all departments in the organization with user counts"
 )
 async def list_departments(
-    db: AsyncSession = Depends(get_db),
-    # Allow unauthenticated access for registration if needed? 
-    # For now, let's assume public or use a specific unauth endpoint if needed.
-    # Actually, for registration dropdown, it strictly needs to be public or we need a special endpoint.
-    # Let's make it authenticated BUT we need it for registration...
-    # Workaround: Allow fetching departments if org_id is provided via query param for public?
-    # No, that leaks data. 
-    # For now, let's just make it public for simplicity in this dev environment, or require login.
-    # Wait, the user said "Role and Department are mandatory for user creation". 
-    # If a new user signs up, they ARE NOT LOGGED IN.
-    # So this endpoint MUST be public or we need a specific public one.
-    # I'll make it public but filter by org_id if provided, else return empty?
-    # Or just `depends(get_current_user)` is optional?
-    org_id: UUID = Query(..., description="Organization ID to fetch departments for")
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    """List all departments for an organization"""
-    dept_service = DepartmentService(db)
-    return await dept_service.get_departments(org_id)
+    """List all departments for current user's organization"""
+    # Get departments with user counts
+    result = await db.execute(
+        select(
+            Department,
+            func.count(User.user_id).label('user_count')
+        )
+        .outerjoin(User, User.department_id == Department.department_id)
+        .where(Department.org_id == current_user.org_id)
+        .group_by(Department.department_id)
+        .order_by(Department.name)
+    )
+    
+    departments = []
+    for row in result.all():
+        dept = row[0]
+        user_count = row[1]
+        departments.append({
+            "department_id": dept.department_id,
+            "org_id": dept.org_id,
+            "name": dept.name,
+            "description": dept.description,
+            "user_count": user_count
+        })
+    
+    return departments
+
 
 @router.post(
-    "/",
+    "",
     response_model=DepartmentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create department",
@@ -51,6 +63,21 @@ async def create_department(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new department"""
-    dept_service = DepartmentService(db)
-    organization = await current_user.awaitable_attrs.organization
-    return await dept_service.create_department(data, organization.org_id)
+    from app.utils.constants import UserRole
+    
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can create departments"
+        )
+    
+    department = Department(
+        org_id=current_user.org_id,
+        name=data.name,
+        description=data.description
+    )
+    db.add(department)
+    await db.commit()
+    await db.refresh(department)
+    
+    return department

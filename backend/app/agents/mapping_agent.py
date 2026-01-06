@@ -94,6 +94,11 @@ class MappingAgent(BaseAgent):
                 if best_member:
                     assigned_user_id = best_member.user_id
                     assignment_reason = f"project_member (score: {score})"
+                    
+                    # Update Workload
+                    if hasattr(best_member, "current_workload"):
+                        best_member.current_workload = (best_member.current_workload or 0) + 1
+                        self.db.add(best_member)
         
         # FALLBACK: Category-based routing
         if not assigned_user_id:
@@ -124,7 +129,52 @@ class MappingAgent(BaseAgent):
         sub_category: str,
         severity: str
     ) -> tuple:
-        """Score team members and return best match"""
+        """Score team members and return best match using AI or Algorithms"""
+        
+        # 1. Prepare candidates for AI
+        from app.services.gemini_service import gemini_service
+        
+        candidates = []
+        for member in team_members:
+            if not member.is_active or not member.user:
+                continue
+            
+            candidates.append({
+                "user_id": str(member.user_id),
+                "name": member.user.name,
+                "role": member.role or "Member",
+                "specialization": member.specialization or [],
+                "current_workload": member.current_workload or 0,
+                "capacity": member.workload_capacity or 10
+            })
+            
+        if not candidates:
+            return None, 0
+
+        # 2. Try AI-based selection (Agentic)
+        complaint_summary = f"{category_type} - {sub_category}"
+        
+        try:
+            ai_decision = await gemini_service.select_best_agent(
+                complaint_summary=complaint_summary,
+                category=category_type,
+                candidates=candidates
+            )
+            
+            if ai_decision and ai_decision.get("selected_user_id"):
+                selected_id = ai_decision["selected_user_id"]
+                reason = ai_decision.get("reasoning", "AI Selected")
+                
+                # Find the member object
+                for member in team_members:
+                    if str(member.user_id) == selected_id:
+                        # Return member and a high score indicating AI choice
+                        return member, f"AI Choice: {reason}"
+        except Exception as e:
+            # Fallback to algorithm on error
+            pass
+
+        # 3. Fallback: Algorithmic Scoring
         best_member = None
         best_score = -1
         

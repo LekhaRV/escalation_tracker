@@ -6,23 +6,28 @@ export const analyticsService = {
         return response.data;
     },
 
-    async exportData(data) {
-        const response = await api.post('/analytics/export', data);
+    async getWorkload() {
+        const response = await api.get('/analytics/workload');
         return response.data;
     },
 
-    async getRealtime() {
-        const response = await api.get('/analytics/realtime');
+    async getEscalations() {
+        const response = await api.get('/analytics/escalations');
         return response.data;
     },
 
-    async getReport(type) {
-        const response = await api.get(`/analytics/reports/${type}`);
+    async getSmartInsights() {
+        const response = await api.get('/analytics/smart-insights');
         return response.data;
     },
 
-    async askAnalyst(query) {
-        const response = await api.post('/analytics/ask', { query });
+    async getPatterns() {
+        const response = await api.get('/analytics', { params: { type: 'patterns' } });
+        return response.data;
+    },
+
+    async getInsights() {
+        const response = await api.get('/analytics', { params: { type: 'insights' } });
         return response.data;
     }
 };

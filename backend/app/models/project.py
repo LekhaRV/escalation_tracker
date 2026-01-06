@@ -29,8 +29,8 @@ class Project(Base, TimestampMixin):
     )
     department_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("departments.department_id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey("departments.department_id", ondelete="SET NULL"),
+        nullable=True  # Optional - projects are cross-functional
     )
     project_name = Column(String(255), nullable=False)
     project_code = Column(String(50))  # Short code like "ABC-API"

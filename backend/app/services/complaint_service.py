@@ -12,11 +12,11 @@ from sqlalchemy.orm import selectinload
 
 from app.models import (
     Complaint, ComplaintCategory, ComplaintAssignment,
-    ComplaintEscalation, Project, User, AgentLog
+    ComplaintEscalation, Project, User, AgentLog, ComplaintComment
 )
 from app.schemas import (
     ComplaintCreate, ComplaintUpdate, ComplaintBulkRequest,
-    ComplaintDetailResponse
+    ComplaintDetailResponse, ComplaintCommentCreate
 )
 from app.core.exceptions import NotFoundError, AuthorizationError
 from app.utils.constants import (
@@ -49,7 +49,8 @@ class ComplaintService:
                 selectinload(Complaint.assignment).selectinload(ComplaintAssignment.assigned_user),
                 selectinload(Complaint.escalations).selectinload(ComplaintEscalation.escalated_user),
                 selectinload(Complaint.project),
-                selectinload(Complaint.agent_logs)
+                selectinload(Complaint.agent_logs),
+                selectinload(Complaint.comments).selectinload(ComplaintComment.user)
             )
         
         result = await self.db.execute(query)
@@ -67,7 +68,9 @@ class ComplaintService:
         severity: Optional[SeverityLevel] = None,
         project_id: Optional[UUID] = None,
         assigned_to: Optional[UUID] = None,
+        overdue: Optional[bool] = None,
         search: Optional[str] = None,
+        complaint_ids: Optional[List[UUID]] = None,
         page: int = 1,
         page_size: int = 20
     ) -> dict:
@@ -90,6 +93,9 @@ class ComplaintService:
                 )
             )
         
+        if complaint_ids:
+            query = query.where(Complaint.complaint_id.in_(complaint_ids))
+        
         # Join with category for severity filter
         if severity:
             query = query.join(
@@ -98,13 +104,21 @@ class ComplaintService:
                 isouter=True
             ).where(ComplaintCategory.severity == severity)
         
-        # Join with assignment for assigned_to filter
-        if assigned_to:
+        # Join with assignment for assigned_to or overdue filter
+        if assigned_to or overdue:
             query = query.join(
                 ComplaintAssignment,
                 Complaint.complaint_id == ComplaintAssignment.complaint_id,
                 isouter=True
-            ).where(ComplaintAssignment.assigned_to_user_id == assigned_to)
+            )
+            if assigned_to:
+                query = query.where(ComplaintAssignment.assigned_to_user_id == assigned_to)
+            if overdue:
+                now = datetime.utcnow()
+                query = query.where(
+                    ComplaintAssignment.sla_deadline < now,
+                    Complaint.status.in_([ComplaintStatus.NEW, ComplaintStatus.IN_PROGRESS])
+                )
         
         # Add common joins for response data
         query = query.options(
@@ -173,7 +187,13 @@ class ComplaintService:
         
         # Check permissions based on role
         if updated_by.role == UserRole.VIEWER:
-            raise AuthorizationError("Viewers cannot update complaints")
+            # Viewers can only update if they are the assignee
+            is_assigned_to_me = (
+                complaint.assignment and 
+                complaint.assignment.assigned_to_user_id == updated_by.user_id
+            )
+            if not is_assigned_to_me:
+                raise AuthorizationError("Viewers can only update complaints assigned to them")
             
         # Agent Permission Logic
         if updated_by.role == UserRole.AGENT:
@@ -382,6 +402,29 @@ class ComplaintService:
         
         return results
     
+    async def add_comment(
+        self,
+        complaint_id: UUID,
+        org_id: UUID,
+        content: str,
+        user: User
+    ) -> ComplaintComment:
+        """Add internal comment to complaint"""
+        complaint = await self.get_complaint_by_id(complaint_id, org_id, include_relations=False)
+        
+        comment = ComplaintComment(
+            complaint_id=complaint.complaint_id,
+            user_id=user.user_id,
+            content=content
+        )
+        self.db.add(comment)
+        await self.db.flush()
+        
+        # Load user for response
+        await self.db.refresh(comment, attribute_names=["user"])
+        
+        return comment
+
     async def build_timeline(self, complaint: Complaint) -> List[Dict[str, Any]]:
         """Build complaint timeline from various events"""
         timeline = []

@@ -21,11 +21,12 @@ class DepartmentUpdate(BaseModel):
     manager_id: Optional[UUID] = None
 
 # Response Schemas
-class DepartmentResponse(DepartmentBase):
+class DepartmentResponse(BaseModel):
     department_id: UUID
     org_id: UUID
-    created_at: datetime
-    updated_at: datetime
+    name: str
+    description: Optional[str] = None
+    user_count: Optional[int] = None
     
     class Config:
         from_attributes = True

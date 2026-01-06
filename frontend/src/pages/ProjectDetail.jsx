@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Briefcase, Calendar, Plus } from 'lucide-react';
 import { projectService } from '../services/projectService';
 import { AddMemberModal } from '../components/common/Modals';
 
 function ProjectDetail() {
+    const { user } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
@@ -43,65 +45,80 @@ function ProjectDetail() {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (!project) return <div>Project not found</div>;
+    if (loading) return (
+        <div className="flex justify-center items-center h-64 text-slate-600 font-medium">
+            Loading Project...
+        </div>
+    );
+    if (!project) return <div className="p-8 text-center text-slate-600">Project not found</div>;
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <button
                     onClick={() => navigate('/projects')}
-                    className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white"
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div>
-                    <h1 className="text-xl font-bold text-white">{project.project_name}</h1>
-                    <p className="text-gray-400 text-sm">{project.client_name}</p>
+                    <h1 className="text-xl font-bold text-slate-900">{project.project_name}</h1>
+                    <p className="text-slate-500 text-sm font-medium">{project.client_name}</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Info Card */}
-                <div className="card h-fit">
-                    <h2 className="text-lg font-bold text-white mb-4">Project Overview</h2>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-xs text-gray-500 uppercase">Project Code</label>
-                            <p className="text-white font-mono">{project.project_code}</p>
+                <div className="card bg-white border border-slate-200 shadow-sm p-6 rounded-xl h-fit">
+                    <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-primary-600" />
+                        Project Overview
+                    </h2>
+                    <div className="space-y-5">
+                        <div className="pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                            <label className="text-xs text-slate-500 font-semibold uppercase mb-1 block">Project Code</label>
+                            <p className="text-slate-700 font-mono bg-slate-50 px-2 py-1 rounded w-fit text-sm">{project.project_code}</p>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 uppercase">Department</label>
-                            <p className="text-white">{project.department_name || 'N/A'}</p>
+                        <div className="pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                            <label className="text-xs text-slate-500 font-semibold uppercase mb-1 block">Department</label>
+                            <p className="text-slate-900 font-medium">{project.department_name || 'N/A'}</p>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 uppercase">Project Manager</label>
-                            <p className="text-white">{project.project_manager_name || 'N/A'}</p>
+                        <div className="pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                            <label className="text-xs text-slate-500 font-semibold uppercase mb-1 block">Project Manager</label>
+                            <p className="text-slate-900 font-medium">{project.project_manager_name || 'N/A'}</p>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 uppercase">Team Lead</label>
-                            <p className="text-white">{project.team_lead_name || 'N/A'}</p>
+                        <div className="pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                            <label className="text-xs text-slate-500 font-semibold uppercase mb-1 block">Team Lead</label>
+                            <p className="text-slate-900 font-medium">{project.team_lead_name || 'N/A'}</p>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 uppercase">Timeline</label>
-                            <p className="text-sm text-gray-300">
-                                {project.start_date} - {project.end_date || 'Ongoing'}
-                            </p>
+                        <div className="pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                            <label className="text-xs text-slate-500 font-semibold uppercase mb-1 block">Timeline</label>
+                            <div className="flex items-center gap-2 text-sm text-slate-700">
+                                <Calendar className="w-4 h-4 text-slate-400" />
+                                <span>{project.start_date}</span>
+                                <span className="text-slate-400">→</span>
+                                <span>{project.end_date || 'Ongoing'}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Team Members */}
-                <div className="lg:col-span-2 card">
+                <div className="lg:col-span-2 card bg-white border border-slate-200 shadow-sm p-6 rounded-xl">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-bold text-white">Team Members</h2>
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="btn-secondary text-sm flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" /> Add Member
-                        </button>
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <Users className="w-5 h-5 text-primary-600" />
+                            Team Members
+                        </h2>
+                        {['admin', 'manager'].includes(user?.role) && (
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="btn-secondary text-sm flex items-center gap-2 py-2 px-3 h-auto"
+                            >
+                                <Plus className="w-4 h-4" /> Add Member
+                            </button>
+                        )}
                     </div>
 
                     <AddMemberModal
@@ -114,33 +131,36 @@ function ProjectDetail() {
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
-                                <tr className="text-xs text-gray-500 uppercase border-b border-white/5">
-                                    <th className="pb-3 pl-2">Name</th>
-                                    <th className="pb-3">Role</th>
-                                    <th className="pb-3">Specialization</th>
-                                    <th className="pb-3">Workload</th>
+                                <tr className="text-xs text-slate-500 font-semibold uppercase border-b border-slate-200 bg-slate-50/50">
+                                    <th className="py-3 pl-3 rounded-l-lg">Name</th>
+                                    <th className="py-3">Role</th>
+                                    <th className="py-3">Specialization</th>
+                                    <th className="py-3 pr-3 rounded-r-lg w-32">Workload</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
+                            <tbody className="divide-y divide-slate-100">
                                 {project.team_members.map((member) => (
-                                    <tr key={member.id} className="text-sm">
-                                        <td className="py-3 pl-2 text-white font-medium">{member.user_name}</td>
-                                        <td className="py-3 text-gray-400">{member.role}</td>
+                                    <tr key={member.id} className="text-sm hover:bg-slate-50/80 transition-colors">
+                                        <td className="py-3 pl-3 text-slate-900 font-semibold">{member.user_name}</td>
+                                        <td className="py-3 text-slate-600">{member.role}</td>
                                         <td className="py-3">
                                             <div className="flex flex-wrap gap-1">
                                                 {member.specialization?.map(s => (
-                                                    <span key={s} className="px-1.5 py-0.5 bg-white/5 rounded text-xs text-gray-300">
+                                                    <span key={s} className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-xs text-slate-600 font-medium">
                                                         {s}
                                                     </span>
                                                 ))}
                                             </div>
                                         </td>
-                                        <td className="py-3">
-                                            <div className="w-24 bg-white/5 rounded-full h-1.5 overflow-hidden">
+                                        <td className="py-3 pr-3">
+                                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                                                 <div
                                                     className="bg-primary-500 h-full rounded-full"
-                                                    style={{ width: `${(member.current_workload / member.workload_capacity) * 100}%` }}
+                                                    style={{ width: `${Math.min((member.current_workload / member.workload_capacity) * 100, 100)}%` }}
                                                 />
+                                            </div>
+                                            <div className="text-xs text-slate-400 mt-1 text-right">
+                                                {Math.round((member.current_workload / member.workload_capacity) * 100)}% Used
                                             </div>
                                         </td>
                                     </tr>

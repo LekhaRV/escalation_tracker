@@ -10,4 +10,5 @@ from app.models.complaint_assignment import ComplaintAssignment
 from app.models.complaint_escalation import ComplaintEscalation
 from app.models.complaint_insight import ComplaintInsight
 from app.models.complaint_pattern import ComplaintPattern
+from app.models.complaint_comment import ComplaintComment
 from app.models.agent_log import AgentLog

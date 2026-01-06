@@ -1,41 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { departmentService } from '../services/departmentService';
-import { authService } from '../services/authService';
-import { AlertCircle, ArrowRight, Loader } from 'lucide-react';
+import { ArrowRight, Loader, Lock, Sparkles } from 'lucide-react';
 
 function Login() {
-    const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [departments, setDepartments] = useState([]);
-    const [defaultOrgId, setDefaultOrgId] = useState(null);
     const [formData, setFormData] = useState({
         email: '',
-        password: '',
-        name: '',
-        orgName: '',
-        departmentId: ''
+        password: ''
     });
 
-    const { login, register } = useAuth();
+    const { login } = useAuth();
     const navigate = useNavigate();
-
-    // Fetch default org and departments on mount
-    useEffect(() => {
-        const fetchDefaults = async () => {
-            try {
-                const org = await authService.getDefaultOrg();
-                setDefaultOrgId(org.org_id);
-                const depts = await departmentService.getAll(org.org_id);
-                setDepartments(depts);
-            } catch (err) {
-                console.error("Failed to fetch defaults:", err);
-            }
-        };
-        fetchDefaults();
-    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,20 +20,10 @@ function Login() {
         setLoading(true);
 
         try {
-            if (isLogin) {
-                await login(formData.email, formData.password);
-            } else {
-                await register(
-                    formData.email,
-                    formData.password,
-                    formData.name,
-                    formData.orgName,
-                    formData.departmentId
-                );
-            }
+            await login(formData.email, formData.password);
             navigate('/');
         } catch (err) {
-            setError(err.response?.data?.detail || 'An error occurred. Please try again.');
+            setError(err.response?.data?.detail || 'Invalid credentials. Please contact your administrator.');
         } finally {
             setLoading(false);
         }
@@ -67,163 +34,111 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[#0f172a]">
-            {/* Background decorations */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-[128px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-500/20 rounded-full blur-[128px]" />
-            </div>
-
-            <div className="w-full max-w-md relative z-10 glass rounded-2xl p-8 shadow-2xl shadow-primary-500/10 border border-white/5">
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mb-4 shadow-lg shadow-primary-500/25">
-                        <AlertCircle className="w-7 h-7 text-white" />
+        <div className="min-h-screen flex w-full relative overflow-hidden bg-app">
+            {/* Left Side - Brand (Sapphire Blue) */}
+            <div className="hidden lg:flex w-1/2 relative z-10 flex-col justify-between p-12 bg-brand-700 text-white">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <img src="/traxion_logo_1.jpg" alt="Traxion" className="w-10 h-10 object-contain rounded" />
+                        <h1 className="text-2xl font-bold tracking-tight">Traxion</h1>
                     </div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">
-                        {isLogin ? 'Welcome back' : 'Create account'}
-                    </h1>
-                    <p className="text-gray-400 mt-2 text-sm text-center">
-                        {isLogin
-                            ? 'Enter your credentials to access the Tarento complaint tracker'
-                            : 'Join your team and start managing complaints effectively'}
+                </div>
+
+                <div className="relative">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-brand-100 text-xs font-semibold mb-6">
+                        <Sparkles className="w-3 h-3 text-accent" />
+                        <span>AI-Powered Platform</span>
+                    </div>
+                    <h2 className="text-5xl font-bold mb-6 leading-tight text-white">
+                        Intelligent Resolution <br />
+                        <span className="text-accent">Simplified.</span>
+                    </h2>
+                    <p className="text-lg text-brand-100 max-w-md leading-relaxed">
+                        Streamline your operations with predictive insights and automated routing.
+                        The smarter way to manage escalations.
                     </p>
                 </div>
 
-                {error && (
-                    <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
-                        {error}
+                {/* Decorative Circles */}
+                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
+            </div>
+
+            {/* Right Side - Login Form (Light Mode) */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative bg-surface">
+                <div className="w-full max-w-md relative z-10">
+                    <div className="mb-10 text-center lg:text-left">
+                        <div className="lg:hidden flex justify-center mb-6">
+                            <img src="/traxion_logo.png" alt="Traxion" className="w-16 h-16 object-contain" />
+                        </div>
+                        <h2 className="text-3xl font-bold text-logic mb-2">Welcome Back</h2>
+                        <p className="text-algo">Please sign in to your workspace</p>
                     </div>
-                )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {!isLogin && (
-                        <>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="name">
-                                    FULL NAME
-                                </label>
-                                <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    className="input"
-                                    placeholder="John Doe"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="orgName">
-                                    ORGANIZATION NAME (Optional)
-                                </label>
-                                <input
-                                    id="orgName"
-                                    name="orgName"
-                                    type="text"
-                                    value={formData.orgName}
-                                    onChange={handleChange}
-                                    className="input"
-                                    placeholder="Leave empty to join existing"
-                                />
-                            </div>
-
-                            {!formData.orgName && (
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="departmentId">
-                                        DEPARTMENT
-                                    </label>
-                                    <select
-                                        id="departmentId"
-                                        name="departmentId"
-                                        required
-                                        value={formData.departmentId}
-                                        onChange={handleChange}
-                                        className="input"
-                                    >
-                                        <option value="" disabled>Select Department</option>
-                                        {departments.map(dept => (
-                                            <option key={dept.department_id} value={dept.department_id}>
-                                                {dept.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                        </>
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-3">
+                            <div className="w-1 h-8 bg-red-500 rounded-full"></div>
+                            {error}
+                        </div>
                     )}
 
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="email">
-                            EMAIL ADDRESS
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={handleChange}
-                            className="input"
-                            placeholder="name@tarento.com"
-                        />
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted ml-1" htmlFor="email">
+                                Work Email
+                            </label>
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                                className="input"
+                                placeholder="name@company.com"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-semibold text-muted ml-1" htmlFor="password">
+                                    Password
+                                </label>
+                            </div>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
+                                className="input"
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-brand-700 hover:bg-brand-800 text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg shadow-brand-700/20 flex items-center justify-center gap-2 group mt-8"
+                        >
+                            {loading ? (
+                                <Loader className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    Sign In
+                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-8 pt-8 border-t border-slate-100 text-center">
+                        <p className="text-sm text-muted flex items-center justify-center gap-2">
+                            <Lock className="w-3 h-3" />
+                            Secure Enterprise Access
+                        </p>
                     </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 ml-1" htmlFor="password">
-                            PASSWORD
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            value={formData.password}
-                            onChange={handleChange}
-                            className="input"
-                            placeholder="••••••••"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full btn-primary py-3 mt-6 flex items-center justify-center gap-2 group"
-                    >
-                        {loading ? (
-                            <Loader className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <>
-                                {isLogin ? 'Sign In' : 'Create Account'}
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </button>
-                </form>
-
-                <div className="mt-8 text-center">
-                    <button
-                        onClick={() => {
-                            setIsLogin(!isLogin);
-                            setError(null);
-                            // Reset optional fields when switching
-                            if (isLogin) {
-                                setFormData(prev => ({
-                                    ...prev,
-                                    name: '',
-                                    orgName: '',
-                                    departmentId: ''
-                                }));
-                            }
-                        }}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
-                    >
-                        {isLogin
-                            ? "Don't have an account? Sign up"
-                            : "Already have an account? Sign in"}
-                    </button>
                 </div>
             </div>
         </div>

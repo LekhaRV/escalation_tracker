@@ -86,7 +86,15 @@ class Settings(BaseSettings):
         try:
             return json.loads(self.CORS_ORIGINS)
         except json.JSONDecodeError:
-            return ["http://localhost:3000", "http://localhost:5173", "http://localhost:3001", "http://localhost:8001"]
+            return [
+                "http://localhost:3000", 
+                "http://localhost:5173", 
+                "http://localhost:3001", 
+                "http://localhost:8001",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3001"
+            ]
     
     class Config:
         env_file = ".env"

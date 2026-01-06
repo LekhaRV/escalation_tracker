@@ -59,7 +59,7 @@ class PatternAgent(BaseAgent):
         for pattern_data in patterns:
             pattern = ComplaintPattern(
                 org_id=self.org_id,
-                pattern_type=PatternType(pattern_data.get("pattern_type", "recurring")),
+                pattern_type=PatternType(pattern_data.get("pattern_type", "recurring").upper()),
                 pattern_description=pattern_data.get("description"),
                 affected_complaints=pattern_data.get("affected_ids", []),
                 affected_projects=[],

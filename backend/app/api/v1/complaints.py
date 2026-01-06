@@ -17,10 +17,11 @@ from app.schemas import (
     ComplaintDetailResponse, ComplaintBriefResponse,
     ComplaintListResponse, ComplaintBulkResponse,
     ComplaintCategoryResponse, ComplaintAssignmentResponse,
-    ComplaintEscalationResponse, AssignableUserResponse
+    ComplaintEscalationResponse, AssignableUserResponse,
+    ComplaintCommentCreate, ComplaintCommentResponse
 )
 from app.services.complaint_service import ComplaintService
-from app.api.deps import get_current_user, require_admin, require_admin_or_manager
+from app.api.deps import get_current_user, require_admin, require_admin_or_manager, require_any_editor
 from app.utils.constants import ComplaintStatus, SeverityLevel, CATEGORY_DEPARTMENT_MAP
 from app.utils.helpers import calculate_assignment_score, get_category_keywords
 from app.core.exceptions import NotFoundError, AuthorizationError
@@ -175,7 +176,7 @@ async def get_assignable_users(
         stmt = select(User).join(Department, User.department_id == Department.department_id).where(
             User.org_id == current_user.org_id,
             Department.name == target_dept_name,
-            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER]),
+            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER]),
             User.status == "active"
         )
         result = await db.execute(stmt)
@@ -196,7 +197,7 @@ async def get_assignable_users(
         # Fetch top 20 active agents/admins to ensure list is never empty
         stmt = select(User).where(
             User.org_id == current_user.org_id,
-            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER]),
+            User.role.in_([UserRole.AGENT, UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER]),
             User.status == "active"
         ).limit(20)
         result = await db.execute(stmt)
@@ -251,21 +252,38 @@ async def list_complaints(
     severity: Optional[SeverityLevel] = Query(None, description="Filter by severity"),
     project_id: Optional[UUID] = Query(None, description="Filter by project"),
     assigned_to: Optional[UUID] = Query(None, description="Filter by assignee"),
+    overdue: Optional[bool] = Query(None, description="Filter for overdue complaints"),
+    ids: Optional[str] = Query(None, description="Comma separated list of complaint IDs"),
     search: Optional[str] = Query(None, description="Search in subject/description"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all complaints with org-wide visibility"""
+    """List all complaints with org-wide visibility (Agents see only their assigned complaints)"""
     service = ComplaintService(db)
+    
+    # Agents only see complaints assigned to them
+    if current_user.role == UserRole.AGENT:
+        assigned_to = current_user.user_id
+    
+    # Parse IDs
+    complaint_ids = None
+    if ids:
+        try:
+            complaint_ids = [UUID(id_str.strip()) for id_str in ids.split(",")]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid UUID in ids parameter")
+
     result = await service.get_complaints(
         org_id=current_user.org_id,
         status=status,
         severity=severity,
         project_id=project_id,
         assigned_to=assigned_to,
+        overdue=overdue,
         search=search,
+        complaint_ids=complaint_ids,
         page=page,
         page_size=page_size
     )
@@ -380,6 +398,45 @@ async def update_complaint(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
 
 
+@router.post(
+    "/{complaint_id}/comments",
+    response_model=ComplaintCommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add comment",
+    description="Add an internal comment/note to the complaint"
+)
+async def add_comment(
+    complaint_id: UUID,
+    comment_in: ComplaintCommentCreate,
+    current_user: User = Depends(require_any_editor),
+    db: AsyncSession = Depends(get_db)
+) -> ComplaintCommentResponse:
+    """Add internal comment to complaint"""
+    try:
+        service = ComplaintService(db)
+        comment = await service.add_comment(
+            complaint_id=complaint_id,
+            org_id=current_user.org_id,
+            content=comment_in.content,
+            user=current_user
+        )
+        await db.commit()
+        
+        return ComplaintCommentResponse(
+            comment_id=comment.comment_id,
+            complaint_id=comment.complaint_id,
+            user_id=comment.user_id,
+            user_name=comment.user.name if comment.user else "Unknown",
+            content=comment.content,
+            created_at=comment.created_at,
+            updated_at=comment.updated_at
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except AuthorizationError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+
+
 @router.delete(
     "/{complaint_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -465,6 +522,19 @@ def _build_detail_response(complaint, timeline):
             escalated_at=e.escalated_at
         ))
     
+    comments = []
+    if complaint.comments:
+        for c in complaint.comments:
+            comments.append(ComplaintCommentResponse(
+                comment_id=c.comment_id,
+                complaint_id=c.complaint_id,
+                user_id=c.user_id,
+                user_name=c.user.name if c.user else "Unknown",
+                content=c.content,
+                created_at=c.created_at,
+                updated_at=c.updated_at
+            ))
+            
     return ComplaintDetailResponse(
         complaint_id=complaint.complaint_id,
         org_id=complaint.org_id,
@@ -485,5 +555,6 @@ def _build_detail_response(complaint, timeline):
         category=category,
         assignment=assignment,
         escalations=escalations,
-        timeline=timeline
+        timeline=timeline,
+        comments=comments
     )
